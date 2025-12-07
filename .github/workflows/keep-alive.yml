@@ -12,4 +12,4 @@ jobs:
     steps:
       - name: Ping Render health endpoint
         run: |
-          curl -sS https://elvox-server.onrender.com/health || true
+          curl -sS https://elvox-server.onrender.com/healthz || true
