@@ -1,14 +1,5 @@
 import * as authService from "../services/authService.js"
 
-export const getInfo = async (req, res, next) => {
-    try {
-        const data = await authService.getInfo(req.body)
-        res.status(200).json(data)
-    } catch (err) {
-        next(err)
-    }
-}
-
 export const getOtp = async (req, res, next) => {
     try {
         const data = await authService.getOtp(req.body)

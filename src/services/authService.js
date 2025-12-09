@@ -6,39 +6,8 @@ import pool from "../db/db.js"
 import otps from "../utils/otpStore.js"
 import capitalize from "../utils/capitalize.js"
 import validateSignUpInput from "../utils/validateSignUpInput.js"
-
-export const getInfo = async (data) => {
-    if (!data.role) throw new CustomError("Role is required", 400)
-
-    const allowedRoles = {
-        student: "students",
-        teacher: "teachers"
-    }
-
-    if (!allowedRoles[data.role]) throw new CustomError("Invalid role")
-
-    if (data.role === "student" && !data.admno)
-        throw new CustomError("Admission number is required")
-    if (data.role === "teacher" && !data.empcode)
-        throw new CustomError("Employee code is required")
-
-    const table = allowedRoles[data.role]
-    const primaryKey = data.role === "student" ? "admno" : "empcode"
-
-    const res = await pool.query(
-        `SELECT * FROM ${table} WHERE ${primaryKey}=$1`,
-        [data[primaryKey]]
-    )
-
-    if (res.rowCount === 0) {
-        throw new CustomError(
-            data.role === "student" ? "Student not found" : "Teacher not found",
-            404
-        )
-    }
-
-    return res.rows[0]
-}
+import { getStudent } from "./studentService.js"
+import { getTeacher } from "./teacherService.js"
 
 export const getOtp = async (data) => {
     if (!data.otpMethod) throw new CustomError("OTP method required", 400)
@@ -96,13 +65,19 @@ export const verifyOtp = async (data) => {
 
     if (!role) throw new CustomError("Role is required", 400)
 
-    if (role.toLowerCase() === "student" && !admno)
-        throw new CustomError("Admission number is required", 400)
+    let person
 
-    if (role.toLowerCase() === "teacher" && !empcode)
-        throw new CustomError("Employee code is required", 400)
+    if (role.toLowerCase() === "student") {
+        if (!admno) throw new CustomError("Admission number is required", 400)
 
-    const person = await getInfo({ role, admno, empcode })
+        person = await getStudent(admno)
+    }
+
+    if (role.toLowerCase() === "teacher") {
+        if (!empcode) throw new CustomError("Employee code is required", 400)
+
+        person = await getTeacher(empcode)
+    }
 
     if (person.email !== email) throw new CustomError("Invalid user details")
 
@@ -141,11 +116,15 @@ export const verifyOtp = async (data) => {
 export const signup = async (data) => {
     const { role, admno, empcode, password } = validateSignUpInput(data)
 
-    const person = await getInfo({
-        role,
-        admno,
-        empcode
-    })
+    let person
+
+    if (role.toLowerCase() === "student") {
+        person = await getStudent(admno)
+    }
+
+    if (role.toLowerCase() === "teacher") {
+        person = await getTeacher(admno)
+    }
 
     const {
         name,
