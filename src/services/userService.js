@@ -3,7 +3,6 @@ import CustomError from "../utils/CustomError.js"
 
 export const checkUserExists = async (data) => {
     const { role, id } = data
-    let field
 
     if (!role) throw new CustomError("Role is required", 400)
     if (!id)
@@ -12,11 +11,21 @@ export const checkUserExists = async (data) => {
             400
         )
 
-    if (role === "student") field = "admno"
-    else if (role === "teacher") field = "empcode"
-    else throw new CustomError("Invalid role", 400)
+    let res
 
-    const res = await pool.query(`SELECT * FROM users WHERE ${field}=$1`, [id])
+    if (role.toLowerCase() === "student") {
+        res = await pool.query(
+            "SELECT * FROM student_user_view WHERE admno = $1",
+            [id]
+        )
+    } else if (role.toLowerCase() === "teacher") {
+        res = await pool.query(
+            "SELECT * FROM teacher_user_view WHERE empcode = $1",
+            [id]
+        )
+    } else {
+        throw new CustomError("Invalid role", 400)
+    }
 
     if (res.rowCount === 0) return { exists: false }
 
