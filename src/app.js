@@ -12,7 +12,7 @@ import authRouter from "./routes/authRoute.js"
 import studentRouter from "./routes/studentRoute.js"
 import teacherRouter from "./routes/teacherRoute.js"
 import userRouter from "./routes/userRoute.js"
-import departmentsRouter from "./routes/departmentRoute.js"
+import classRouter from "./routes/classRoute.js"
 
 const app = express()
 
@@ -53,7 +53,7 @@ app.use("/auth", authRouter)
 app.use("/students", studentRouter)
 app.use("/teachers", teacherRouter)
 app.use("/users", userRouter)
-app.use("/departments", auth, departmentsRouter)
+app.use("/classes", auth, classRouter)
 
 app.use(notFound)
 app.use(errorHandler)
