@@ -115,9 +115,9 @@ export const verifyOtpSignup = async (data) => {
     // ONLY FOR TESTING ONLY, MUST REMOVE IN PROD
     if (data.otp === "123456") {
         const signupToken = jwt.sign(
-            { role, admno, empcode },
+            { role, admno, empcode, purpose: "signup" },
             process.env.SIGNUP_SECRET,
-            { expiresIn: "10m" }
+            { expiresIn: "5m" }
         )
         return { message: "OTP verified", signupToken }
     }
@@ -136,9 +136,9 @@ export const verifyOtpSignup = async (data) => {
     otps.delete(data[otpMethod])
 
     const signupToken = jwt.sign(
-        { role, admno, empcode },
+        { role, admno, empcode, purpose: "signup" },
         process.env.SIGNUP_SECRET,
-        { expiresIn: "10m" }
+        { expiresIn: "5m" }
     )
 
     return { message: "OTP verified", signupToken }
@@ -162,7 +162,7 @@ export const verifyOtpForgotPassword = async (data) => {
     if (otpMethod === "email" && !email)
         throw new CustomError("Email is required", 400)
 
-    const res = await pool.query(`SELECT 1 FROM users WHERE ${type} = $1`, [
+    const res = await pool.query(`SELECT * FROM users WHERE ${type} = $1`, [
         data[otpMethod]
     ])
 
@@ -172,12 +172,15 @@ export const verifyOtpForgotPassword = async (data) => {
 
     // ONLY FOR TESTING ONLY, MUST REMOVE IN PROD
     if (data.otp === "123456") {
-        const passwordToken = jwt.sign(
-            { role: user.role, admno: user.admno, empcode: user.empcode },
+        const passwordResetToken = jwt.sign(
+            {
+                id: user.id,
+                purpose: "password_reset"
+            },
             process.env.PASSWORD_CHANGE_SECRET,
-            { expiresIn: "10m" }
+            { expiresIn: "5m" }
         )
-        return { message: "OTP verified", passwordToken }
+        return { message: "OTP verified", passwordResetToken }
     }
     // ----------------------------------------
 
@@ -193,12 +196,15 @@ export const verifyOtpForgotPassword = async (data) => {
 
     otps.delete(data[otpMethod])
 
-    const passwordToken = jwt.sign(
-        { role: user.role, admno: user.admno, empcode: user.empcode },
+    const passwordResetToken = jwt.sign(
+        {
+            id: user.id,
+            purpose: "password_reset"
+        },
         process.env.PASSWORD_CHANGE_SECRET,
-        { expiresIn: "10m" }
+        { expiresIn: "5m" }
     )
-    return { message: "OTP verified", passwordToken }
+    return { message: "OTP verified", passwordResetToken }
 }
 
 export const signup = async (data) => {
@@ -336,4 +342,54 @@ export const login = async (data) => {
     const { user_id: id, ...rest } = userDeatils
 
     return { user: { id, ...rest }, token }
+}
+
+export const changePassword = async (data) => {
+    const { newPassword, confirmNewPassword, passwordResetToken } = data
+
+    const passwordRegex =
+        /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*\-]).{8,}$/
+
+    if (!passwordResetToken)
+        throw new CustomError("Password reset token is required")
+
+    if (!newPassword || !confirmNewPassword)
+        throw new CustomError(
+            "New password and confirm new password is required",
+            400
+        )
+
+    if (!passwordRegex.test(newPassword))
+        throw new CustomError(
+            "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character",
+            400
+        )
+
+    if (newPassword !== confirmNewPassword)
+        throw new CustomError("Passwords do not match", 400)
+
+    let payload
+
+    try {
+        payload = jwt.verify(
+            passwordResetToken,
+            process.env.PASSWORD_CHANGE_SECRET
+        )
+    } catch (_) {
+        throw new CustomError("Invalid or expired password reset token", 401)
+    }
+
+    if (payload.purpose !== "password_reset" || !payload.id)
+        throw new CustomError("Invalid token", 401)
+
+    const passwordHash = await bcrypt.hash(newPassword, 10)
+
+    const res = await pool.query(
+        "UPDATE users SET password_hash = $1 WHERE id = $2",
+        [passwordHash, payload.id]
+    )
+
+    if (res.rowCount === 0) throw new CustomError("User not found", 404)
+
+    return { message: "Password changed successfully" }
 }

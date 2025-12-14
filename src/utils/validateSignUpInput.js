@@ -17,6 +17,9 @@ const validateSignUpInput = (data) => {
         throw new CustomError("Invalid or expired signup token", 401)
     }
 
+    if (payload.purpose !== "signup")
+        throw new CustomError("Invalid token", 401)
+
     const { role, admno, empcode } = payload
 
     if (!role) throw new CustomError("Role is required", 400)

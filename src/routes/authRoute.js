@@ -6,6 +6,7 @@ import {
     signup,
     login,
     logout,
+    changePassword,
     verifyMe
 } from "../controllers/authController.js"
 import auth from "../middleware/auth.js"
@@ -18,6 +19,7 @@ router.post("/otp/verify/forgot-password", verifyOtpForgotPassword)
 router.post("/signup", signup)
 router.post("/login", login)
 router.post("/logout", logout)
+router.patch("/change-password", changePassword)
 router.get("/me", auth, verifyMe)
 
 export default router
