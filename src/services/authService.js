@@ -12,10 +12,12 @@ import { getTeacher } from "./teacherService.js"
 export const getOtp = async (data) => {
     if (!data.purpose) throw new CustomError("Purpose is required")
     if (!data.otpMethod) throw new CustomError("OTP method required", 400)
+    if (data.otpMethod !== "email" && data.otpMethod !== "phone")
+        throw new CustomError("Invalid otp method", 400)
     if (!data[data.otpMethod])
         throw new CustomError(`${capitalize(data.otpMethod)} required`)
 
-    const type = detectInput(data[data.otpMethod])
+    const type = data.otpMethod === "email" ? "email" : "phone"
 
     let exists
 
@@ -40,8 +42,6 @@ export const getOtp = async (data) => {
     } else {
         throw new CustomError("Invalid purpose", 400)
     }
-
-    console.log(exists)
 
     if (exists) {
         if (type === "email") {
@@ -78,10 +78,13 @@ export const getOtp = async (data) => {
     return { message: "OTP send" }
 }
 
-export const verifyOtp = async (data) => {
+export const verifyOtpSignup = async (data) => {
     const { role, admno, empcode, otpMethod, otp, email, phone } = data
 
     if (!otpMethod) throw new CustomError("OTP method required", 400)
+
+    if (otpMethod !== "email" && otpMethod !== "phone")
+        throw new CustomError("Invalid otp method", 400)
 
     if (!otp) throw new CustomError("OTP required", 400)
 
@@ -139,6 +142,63 @@ export const verifyOtp = async (data) => {
     )
 
     return { message: "OTP verified", signupToken }
+}
+
+export const verifyOtpForgotPassword = async (data) => {
+    const { otpMethod, otp, email, phone } = data
+
+    if (!otpMethod) throw new CustomError("OTP method required", 400)
+
+    if (otpMethod !== "email" && otpMethod !== "phone")
+        throw new CustomError("Invalid otp method", 400)
+
+    if (!otp) throw new CustomError("OTP required", 400)
+
+    const type = otpMethod === "email" ? "email" : "phone"
+
+    if (otpMethod === "phone" && !phone)
+        throw new CustomError("Phone is required", 400)
+
+    if (otpMethod === "email" && !email)
+        throw new CustomError("Email is required", 400)
+
+    const res = await pool.query(`SELECT 1 FROM users WHERE ${type} = $1`, [
+        data[otpMethod]
+    ])
+
+    if (res.rowCount === 0) throw new CustomError("User does not exist", 404)
+
+    const user = res.rows[0]
+
+    // ONLY FOR TESTING ONLY, MUST REMOVE IN PROD
+    if (data.otp === "123456") {
+        const passwordToken = jwt.sign(
+            { role: user.role, admno: user.admno, empcode: user.empcode },
+            process.env.PASSWORD_CHANGE_SECRET,
+            { expiresIn: "10m" }
+        )
+        return { message: "OTP verified", passwordToken }
+    }
+    // ----------------------------------------
+
+    const record = otps.get(data[otpMethod])
+
+    if (!record) throw new CustomError("No OTP found", 400)
+
+    if (record.expiresAt < Date.now()) {
+        otps.delete(data[otpMethod])
+        throw new CustomError("OTP expired", 400)
+    }
+    if (record.otp !== otp) throw new CustomError("Invalid OTP", 400)
+
+    otps.delete(data[otpMethod])
+
+    const passwordToken = jwt.sign(
+        { role: user.role, admno: user.admno, empcode: user.empcode },
+        process.env.PASSWORD_CHANGE_SECRET,
+        { expiresIn: "10m" }
+    )
+    return { message: "OTP verified", passwordToken }
 }
 
 export const signup = async (data) => {

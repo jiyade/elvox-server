@@ -9,9 +9,18 @@ export const getOtp = async (req, res, next) => {
     }
 }
 
-export const verifyOtp = async (req, res, next) => {
+export const verifyOtpSignup = async (req, res, next) => {
     try {
-        const data = await authService.verifyOtp(req.body)
+        const data = await authService.verifyOtpSignup(req.body)
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
+export const verifyOtpForgotPassword = async (req, res, next) => {
+    try {
+        const data = await authService.verifyOtpForgotPassword(req.body)
         res.status(200).json(data)
     } catch (err) {
         next(err)
