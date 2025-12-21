@@ -4,7 +4,7 @@ const maskContact = (value, type) => {
     if (type === "phone") {
         const digits = value.replace(/\D/g, "")
 
-        return "*******" + digits.slice(-3)
+        return "*".repeat(7) + digits.slice(-3)
     }
 
     if (type === "email") {

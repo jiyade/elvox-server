@@ -6,7 +6,6 @@ import pool from "./db/db.js"
 import errorHandler from "./middleware/errorHandler.js"
 import notFound from "./middleware/notFound.js"
 import auth from "./middleware/auth.js"
-import requireRole from "./middleware/requireRole.js"
 
 import authRouter from "./routes/authRoute.js"
 import studentRouter from "./routes/studentRoute.js"
@@ -14,6 +13,7 @@ import teacherRouter from "./routes/teacherRoute.js"
 import userRouter from "./routes/userRoute.js"
 import classRouter from "./routes/classRoute.js"
 import electionRouter from "./routes/electionRoute.js"
+import candidateRouter from "./routes/candidateRoute.js"
 
 const app = express()
 
@@ -56,6 +56,7 @@ app.use("/teachers", teacherRouter)
 app.use("/users", userRouter)
 app.use("/classes", auth, classRouter)
 app.use("/elections", auth, electionRouter)
+app.use("/candidates", auth, candidateRouter)
 
 app.use(notFound)
 app.use(errorHandler)

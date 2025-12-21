@@ -9,3 +9,13 @@ export const getElections = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getElection = async (req, res, next) => {
+    try {
+        const election = await electionService.getElection(req.params.id)
+
+        return res.status(200).json(election)
+    } catch (err) {
+        next(err)
+    }
+}
