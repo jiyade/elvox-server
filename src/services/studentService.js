@@ -2,7 +2,7 @@ import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import maskContact from "../utils/maskContact.js"
 
-export const getStudent = async (admno) => {
+export const getStudent = async (admno, mask = true) => {
     if (!admno) throw new CustomError("Admission number is required", 400)
 
     const res = await pool.query("SELECT * FROM students WHERE admno=$1", [
@@ -10,6 +10,8 @@ export const getStudent = async (admno) => {
     ])
 
     if (res.rowCount === 0) throw new CustomError("Student not found", 404)
+
+    if (!mask) return res.rows[0]
 
     const student = {
         ...res.rows[0],

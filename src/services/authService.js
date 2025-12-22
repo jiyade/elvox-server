@@ -211,9 +211,9 @@ export const signup = async (data) => {
     let person
 
     if (role.toLowerCase() === "student") {
-        person = await getStudent(admno)
+        person = await getStudent(admno, false)
     } else if (role.toLowerCase() === "teacher") {
-        person = await getTeacher(empcode)
+        person = await getTeacher(empcode, false)
     }
 
     const { name, profile_pic, phone, user_id } = person
