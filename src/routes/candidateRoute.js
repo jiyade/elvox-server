@@ -1,6 +1,9 @@
 import { Router } from "express"
 import requireRole from "../middleware/requireRole.js"
-import { createCandidate } from "../controllers/candidateController.js"
+import {
+    createCandidate,
+    getMyCandidate
+} from "../controllers/candidateController.js"
 import upload from "../middleware/upload.js"
 
 const router = Router()
@@ -15,5 +18,6 @@ router.post(
     ]),
     createCandidate
 )
+router.get("/me", requireRole(["student"]), getMyCandidate)
 
 export default router

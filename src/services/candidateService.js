@@ -115,3 +115,17 @@ export const createCandidate = async (data) => {
         client.release()
     }
 }
+
+export const getMyCandidate = async (userId) => {
+    if (!userId) throw new CustomError("User id is required", 400)
+
+    const res = await pool.query(
+        "SELECT * FROM candidates WHERE user_id = $1",
+        [userId]
+    )
+
+    if (res.rowCount === 0)
+        throw new CustomError("No candidate application found", 404)
+
+    return res.rows[0]
+}

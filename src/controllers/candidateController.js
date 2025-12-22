@@ -13,3 +13,13 @@ export const createCandidate = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getMyCandidate = async (req, res, next) => {
+    try {
+        const data = await candidateService.getMyCandidate(req.user.id)
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
