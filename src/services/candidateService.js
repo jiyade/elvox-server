@@ -129,3 +129,22 @@ export const getMyCandidate = async (userId) => {
 
     return res.rows[0]
 }
+
+export const getCandidate = async (data) => {
+    const { id, user } = data
+
+    if (!id) throw new CustomError("Candidate id is required", 400)
+
+    const res = await pool.query("SELECT * FROM candidates WHERE id = $1", [id])
+
+    if (res.rowCount === 0)
+        throw new CustomError("No candidate application found", 404)
+
+    if (Number(res.rows[0].class_id) !== Number(user.tutor_of))
+        throw new CustomError(
+            "This candidate does not belong to your class",
+            403
+        )
+
+    return res.rows[0]
+}

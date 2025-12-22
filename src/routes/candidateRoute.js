@@ -2,6 +2,7 @@ import { Router } from "express"
 import requireRole from "../middleware/requireRole.js"
 import {
     createCandidate,
+    getCandidate,
     getMyCandidate
 } from "../controllers/candidateController.js"
 import upload from "../middleware/upload.js"
@@ -19,5 +20,10 @@ router.post(
     createCandidate
 )
 router.get("/me", requireRole(["student"]), getMyCandidate)
+router.get(
+    "/:id",
+    requireRole(["teacher", "supervisor", "admin"]),
+    getCandidate
+)
 
 export default router
