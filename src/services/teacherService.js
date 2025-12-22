@@ -2,7 +2,7 @@ import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import maskContact from "../utils/maskContact.js"
 
-export const getTeacher = async (empcode) => {
+export const getTeacher = async (empcode, mask = true) => {
     if (!empcode) throw new CustomError("Employee code is required", 400)
 
     const res = await pool.query("SELECT * FROM teachers WHERE empcode=$1", [
@@ -10,6 +10,8 @@ export const getTeacher = async (empcode) => {
     ])
 
     if (res.rowCount === 0) throw new CustomError("Teacher not found", 404)
+
+    if (!mask) return res.rows[0]
 
     const teacher = {
         ...res.rows[0],
