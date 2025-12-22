@@ -36,3 +36,16 @@ export const getCandidate = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getCandidates = async (req, res, next) => {
+    try {
+        const data = await candidateService.getCandidates({
+            query: req.query,
+            user: req.user
+        })
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

@@ -148,3 +148,41 @@ export const getCandidate = async (data) => {
 
     return res.rows[0]
 }
+
+export const getCandidates = async (data) => {
+    const {
+        query: { status },
+        user: { tutor_of, role }
+    } = data
+
+    if (!status) throw new CustomError("Status is required", 400)
+
+    let candidates
+
+    if (status === "pending") {
+        if (role === "student") throw new CustomError("Forbidden", 403)
+        if (!tutor_of)
+            throw new CustomError(
+                "You must need to be a tutor to access pending candidate applications",
+                403
+            )
+
+        const res = await pool.query(
+            "SELECT name, id, election_id, profile_pic, status, created_at FROM candidates WHERE status = $1 AND class_id = $2",
+            [status, tutor_of]
+        )
+
+        candidates = res.rows
+    } else if (status === "approved") {
+        const res = await pool.query(
+            "SELECT name, id, election_id, position, department, class, semester, profile_pic, status, actioned_by, updated_at FROM candidates WHERE status = $1",
+            [status]
+        )
+
+        candidates = res.rows
+    } else {
+        throw new CustomError("Inalid status", 400)
+    }
+
+    return candidates
+}

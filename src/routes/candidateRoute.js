@@ -3,6 +3,7 @@ import requireRole from "../middleware/requireRole.js"
 import {
     createCandidate,
     getCandidate,
+    getCandidates,
     getMyCandidate
 } from "../controllers/candidateController.js"
 import upload from "../middleware/upload.js"
@@ -19,6 +20,7 @@ router.post(
     ]),
     createCandidate
 )
+router.get("/", getCandidates)
 router.get("/me", requireRole(["student"]), getMyCandidate)
 router.get(
     "/:id",
