@@ -10,3 +10,13 @@ export const getClasses = async () => {
 
     return classes
 }
+
+export const getClass = async (classId) => {
+    const res = await pool.query("SELECT * FROM classes WHERE id = $1", [
+        classId
+    ])
+
+    if (res.rowCount === 0) throw new CustomError("No class found", 404)
+
+    return res.rows
+}
