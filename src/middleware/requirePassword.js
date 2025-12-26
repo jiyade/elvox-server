@@ -18,8 +18,6 @@ const requirePassword = async (req, res, next) => {
 
     const isMatch = await bcrypt.compare(password, password_hash)
 
-    console.log(isMatch)
-
     if (!isMatch) throw new CustomError("Invalid password", 401)
 
     next()
