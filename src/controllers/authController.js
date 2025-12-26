@@ -38,7 +38,7 @@ export const signup = async (req, res, next) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
-        res.status(201).json(user)
+        res.status(201).json({ user, token })
     } catch (err) {
         next(err)
     }
@@ -55,7 +55,7 @@ export const login = async (req, res, next) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
-        res.status(200).json(user)
+        res.status(200).json({ user, token })
     } catch (err) {
         next(err)
     }
