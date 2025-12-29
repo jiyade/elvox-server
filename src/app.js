@@ -18,9 +18,29 @@ import notificationRouter from "./routes/notificationRoute.js"
 
 const app = express()
 
+const DEV_ORIGINS = [
+    /^http:\/\/localhost:\d+$/,
+    /^http:\/\/127\.0\.0\.1:\d+$/,
+    /^http:\/\/192\.168\.\d+\.\d+:\d+$/
+]
+
+const PROD_ORIGINS = ["https://elvox-app.vercel.app"]
+
 app.use(
     cors({
-        origin: ["http://localhost:5173", "https://elvox-app.vercel.app"],
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true)
+
+            if (
+                process.env.NODE_ENV === "production"
+                    ? PROD_ORIGINS.includes(origin)
+                    : DEV_ORIGINS.some((r) => r.test(origin))
+            ) {
+                return callback(null, true)
+            }
+
+            callback(new Error("Not allowed by CORS"))
+        },
         credentials: true
     })
 )
