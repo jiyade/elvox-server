@@ -133,7 +133,10 @@ export const getAppeal = async (data) => {
 
     const appeal = {
         ...res.rows[0],
-        identifier: res.user_role === "student" ? res.admno : res.empcode,
+        identifier:
+            res.rows[0].user_role === "student"
+                ? res.rows[0].admno
+                : res.rows[0].empcode,
         attachments: attachments.rows
     }
 
