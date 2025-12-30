@@ -32,7 +32,7 @@ export const createAppeal = async (data) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "INSERT INTO appeals (user_id, submitted_by, submitted_by_role, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
+            "INSERT INTO appeals (user_id, submitted_by, submitted_by_role, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
             [
                 userId,
                 userName,
@@ -93,4 +93,28 @@ export const getAppeals = async (data) => {
     }
 
     return appeals
+}
+
+export const getAppeal = async (data) => {
+    const { role, userId, appealId } = data
+
+    if (!appealId) throw new CustomError("Appeal id is required", 400)
+
+    const res = await pool.query("SELECT * FROM appeals WHERE id = $1", [
+        appealId
+    ])
+
+    if (res.rowCount === 0) throw new CustomError("Appeal not found", 404)
+
+    if (res.rows[0].user_id !== userId && role !== "admin")
+        throw new CustomError("Forbidden", 403)
+
+    const attachments = await pool.query(
+        "SELECT * FROM appeal_attachments WHERE appeal_id = $1",
+        [appealId]
+    )
+
+    const appeal = { ...res.rows[0], attachments: attachments.rows }
+
+    return appeal
 }

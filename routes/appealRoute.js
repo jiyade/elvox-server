@@ -1,6 +1,10 @@
 import { Router } from "express"
 import upload from "../middleware/upload.js"
-import { createAppeal, getAppeals } from "../controllers/appealController.js"
+import {
+    createAppeal,
+    getAppeal,
+    getAppeals
+} from "../controllers/appealController.js"
 import requireRole from "../middleware/requireRole.js"
 
 const router = Router()
@@ -12,5 +16,6 @@ router.post(
     upload.array("attachments", 3),
     createAppeal
 )
+router.get("/:id", getAppeal)
 
 export default router

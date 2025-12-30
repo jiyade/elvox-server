@@ -27,3 +27,17 @@ export const getAppeals = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getAppeal = async (req, res, next) => {
+    try {
+        const data = await appealService.getAppeal({
+            role: req.user.role,
+            userId: req.user.id,
+            appealId: req.params.id
+        })
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
