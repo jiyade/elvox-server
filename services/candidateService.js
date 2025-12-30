@@ -32,8 +32,8 @@ export const createCandidate = async (data) => {
         throw new CustomError("Student is not eligible for nomination", 403)
 
     const existing = await pool.query(
-        "SELECT * FROM candidates WHERE user_id = $1",
-        [data.user.id]
+        "SELECT * FROM candidates WHERE user_id = $1 AND election_id = $2",
+        [data.user.id, election.id]
     )
 
     if (existing.rowCount > 0)
@@ -112,16 +112,22 @@ export const createCandidate = async (data) => {
     }
 }
 
-export const getMyCandidate = async (userId) => {
+export const getMyCandidate = async ({ userId, electionId }) => {
     if (!userId) throw new CustomError("User id is required", 400)
+    if (!electionId) throw new CustomError("Election id is required", 400)
 
     const res = await pool.query(
-        "SELECT actioned_by, actioned_by_name, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, position, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn'",
-        [userId]
+        "SELECT actioned_by, actioned_by_name, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, position, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn' AND election_id = $2",
+        [userId, electionId]
     )
 
     if (res.rowCount === 0)
         throw new CustomError("No candidate application found", 404)
+
+    const election = await getElection(res.rows[0].election_id)
+
+    if (election.status === "closed")
+        throw new CustomError("Election is closed", 403)
 
     return res.rows[0]
 }
@@ -130,11 +136,14 @@ export const checkCandidateExists = async (userId) => {
     if (!userId) throw new CustomError("User id is required", 400)
 
     const res = await pool.query(
-        "SELECT status FROM candidates WHERE user_id = $1",
+        "SELECT status, election_id FROM candidates WHERE user_id = $1",
         [userId]
     )
 
     if (res.rowCount === 0) return { exists: false }
+
+    const election = await getElection(res.rows[0].election_id)
+    if (election.status === "closed") return { exists: false }
 
     return { exists: true, status: res.rows[0].status }
 }

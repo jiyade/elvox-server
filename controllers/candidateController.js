@@ -16,7 +16,10 @@ export const createCandidate = async (req, res, next) => {
 
 export const getMyCandidate = async (req, res, next) => {
     try {
-        const data = await candidateService.getMyCandidate(req.user.id)
+        const data = await candidateService.getMyCandidate({
+            userId: req.user.id,
+            electionId: req.query.election
+        })
 
         res.status(200).json(data)
     } catch (err) {
