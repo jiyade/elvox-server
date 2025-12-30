@@ -47,8 +47,13 @@ export const createAppeal = async (data) => {
                 )
 
                 await client.query(
-                    "INSERT INTO appeal_attachments (appeal_id,file_url,file_type) VALUES ($1, $2, $3)",
-                    [appealId, getURL(attachment.path), file.mimetype]
+                    "INSERT INTO appeal_attachments (appeal_id,file_url,file_type, file_name) VALUES ($1, $2, $3, $4)",
+                    [
+                        appealId,
+                        getURL(attachment.path),
+                        file.mimetype,
+                        file.originalname
+                    ]
                 )
             }
         }
