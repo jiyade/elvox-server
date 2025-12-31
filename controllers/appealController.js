@@ -41,3 +41,17 @@ export const getAppeal = async (req, res, next) => {
         next(err)
     }
 }
+
+export const updateAppealStatus = async (req, res, next) => {
+    try {
+        const data = await appealService.updateAppealStatus({
+            appealId: req.params.id,
+            adminNote: req.body.adminNote,
+            status: req.body.status
+        })
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

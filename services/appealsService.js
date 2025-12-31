@@ -147,3 +147,28 @@ export const getAppeal = async (data) => {
 
     return appeal
 }
+
+export const updateAppealStatus = async (data) => {
+    const { appealId, adminNote, status } = data
+
+    if (!adminNote?.trim()) throw new CustomError("Admin note is required", 400)
+    if (status !== "approved" && status !== "rejected") {
+        throw new CustomError("Invalid status", 400)
+    }
+
+    const updateRes = await pool.query(
+        "UPDATE appeals SET status = $1, admin_comment = $2 WHERE id = $3 AND status = 'pending' RETURNING id, status, admin_comment",
+        [status, adminNote.trim(), appealId]
+    )
+
+    if (updateRes.rowCount === 1) return updateRes.rows[0]
+
+    const checkRes = await pool.query(
+        "SELECT status FROM appeals WHERE id = $1",
+        [appealId]
+    )
+
+    if (checkRes.rowCount === 0) throw new CustomError("Appeal not found", 404)
+
+    throw new CustomError("Appeal already resolved", 409)
+}

@@ -3,7 +3,8 @@ import upload from "../middleware/upload.js"
 import {
     createAppeal,
     getAppeal,
-    getAppeals
+    getAppeals,
+    updateAppealStatus
 } from "../controllers/appealController.js"
 import requireRole from "../middleware/requireRole.js"
 
@@ -17,5 +18,6 @@ router.post(
     createAppeal
 )
 router.get("/:id", getAppeal)
+router.patch("/:id", requireRole(["admin"]), updateAppealStatus)
 
 export default router
