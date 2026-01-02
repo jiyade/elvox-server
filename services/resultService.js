@@ -88,10 +88,18 @@ export const getReults = async (electionId, queries) => {
         group.candidates.sort((a, b) => b.votes - a.votes)
 
         const topVotes = group.candidates[0]?.votes ?? 0
+        const secondVotes = group.candidates[1]?.votes ?? topVotes
 
-        group.candidates.forEach((c) => {
-            const diff = c.votes - topVotes
-            c.lead = diff === 0 ? "0" : diff.toString()
+        group.candidates.forEach((c, index) => {
+            let lead = 0
+            if (c.votes === topVotes && index === 0) {
+                // winner
+                lead = topVotes - secondVotes
+            } else {
+                // everyone else
+                lead = c.votes - topVotes
+            }
+            c.lead = lead.toString()
         })
     })
 
