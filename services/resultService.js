@@ -4,7 +4,7 @@ import pool from "../db/db.js"
 export const getReults = async (electionId, queries) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
 
-    const { status, year, class: classId } = queries
+    const { status, year, class: className } = queries
 
     // BUILD DYNAMIC SQL QUERY
     const values = [electionId]
@@ -33,9 +33,9 @@ export const getReults = async (electionId, queries) => {
     }
 
     // OPTIONAL CLASS FILTER
-    if (classId && classId !== "all") {
-        query += ` AND c.class_id = $${idx++}`
-        values.push(classId)
+    if (className && className !== "all") {
+        query += ` AND LOWER(c.class) = LOWER($${idx++})`
+        values.push(className)
     }
 
     // OPTIONAL YEAR FILTER (MAPPED TO SEMESTERS)
