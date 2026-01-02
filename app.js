@@ -17,6 +17,7 @@ import candidateRouter from "./routes/candidateRoute.js"
 import notificationRouter from "./routes/notificationRoute.js"
 import appealRouter from "./routes/appealRoute.js"
 import resultRouter from "./routes/resultRoute.js"
+import voterRouter from "./routes/voterRoute.js"
 
 const app = express()
 
@@ -84,6 +85,7 @@ app.use("/candidates", auth, candidateRouter)
 app.use("/notifications", auth, notificationRouter)
 app.use("/appeals", auth, appealRouter)
 app.use("/results", auth, resultRouter)
+app.use("/voters", auth, voterRouter)
 
 app.use(notFound)
 app.use(errorHandler)
