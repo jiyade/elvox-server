@@ -441,7 +441,7 @@ export const reviewCandidate = async (candidateId, body, user) => {
                   }
                 : {
                       message:
-                          "Your application has been reviewed and rejected. Please check the reason provided by your tutor",
+                          "Your candidate application has been rejected. Please check the reason provided by your tutor",
                       type: "error"
                   }
 
