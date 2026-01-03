@@ -12,3 +12,14 @@ export const getResults = async (req, res, next) => {
         next(err)
     }
 }
+export const getRandomCandidatesResults = async (req, res, next) => {
+    try {
+        const data = await resultService.getRandomCandidatesResults(
+            req.query.limit
+        )
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

@@ -105,3 +105,37 @@ export const getReults = async (electionId, queries) => {
 
     return Object.values(grouped)
 }
+
+export const getRandomCandidatesResults = async (limit) => {
+    const safeLimit = Math.max(1, Math.min(Number(limit) || 3, 10))
+
+    const electionRes = await pool.query(
+        "SELECT id FROM elections WHERE status = 'closed' ORDER BY election_end DESC LIMIT 1"
+    )
+
+    if (electionRes.rowCount === 0) return []
+
+    const electionId = electionRes.rows[0].id
+
+    const query = `
+        SELECT
+            r.total_votes,
+            r.result_status,
+            c.id AS candidate_id,
+            c.name,
+            c.category,
+            c.class,
+            c.semester
+        FROM results r
+        JOIN candidates c ON c.id = r.candidate_id
+        WHERE r.election_id = $1
+          AND r.published = true
+          AND r.result_status != 'tie'
+        ORDER BY RANDOM()
+        LIMIT $2
+    `
+
+    const res = await pool.query(query, [electionId, safeLimit])
+
+    return res.rows
+}
