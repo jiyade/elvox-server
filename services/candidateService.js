@@ -282,7 +282,7 @@ export const withdrawCandidate = async (data) => {
         // 1. Lock + read current status
         const res = await client.query(
             `
-            SELECT status, user_id
+            SELECT status, user_id, class_id
             FROM candidates
             WHERE id = $1
             FOR UPDATE`,
@@ -317,14 +317,29 @@ export const withdrawCandidate = async (data) => {
             )
         }
 
-        const notificationOptions = {
+        const tutorRes = await client.query(
+            "SELECT user_id from teachers WHERE tutor_of = $1",
+            [res.rows[0].class_id]
+        )
+
+        const studentNotificationOptions = {
             message: "Your candidate application has been withdrawn",
             type: "success"
+        }
+        const tutorNotificationOptions = {
+            message:
+                "A candidate application has been withdrawn from your class",
+            type: "info"
         }
 
         await sendNotification(
             [res.rows[0].user_id],
-            notificationOptions,
+            studentNotificationOptions,
+            client
+        )
+        await sendNotification(
+            [tutorRes.rows[0].user_id],
+            tutorNotificationOptions,
             client
         )
 
