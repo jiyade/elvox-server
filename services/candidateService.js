@@ -99,15 +99,26 @@ export const createCandidate = async (data) => {
             [data.user.class_id]
         )
 
-        const notificationOptions = {
+        const tutorNotificationOptions = {
             message:
                 "A new candidate application has been submitted and is awaiting your review",
+            type: "info"
+        }
+        const studentNotificationOptions = {
+            message:
+                "Your candidate application has been submitted successfully and is awaiting review by your tutor",
             type: "info"
         }
 
         await sendNotification(
             [tutorRes.rows[0].user_id],
-            notificationOptions,
+            tutorNotificationOptions,
+            client
+        )
+
+        await sendNotification(
+            [data.user.id],
+            studentNotificationOptions,
             client
         )
 
