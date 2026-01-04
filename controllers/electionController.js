@@ -29,3 +29,26 @@ export const getAllElections = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getSupervisors = async (req, res, next) => {
+    try {
+        const supervisors = await electionService.getSupervisors()
+
+        return res.status(200).json(supervisors)
+    } catch (err) {
+        next(err)
+    }
+}
+
+export const updateSupervisors = async (req, res, next) => {
+    try {
+        const data = await electionService.updateSupervisors(
+            req.params.electionId,
+            req.body.payload
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

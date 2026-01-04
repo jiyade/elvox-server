@@ -395,7 +395,7 @@ export const checkIfSupervisor = async (userId, userRole, electionId) => {
         const res = await pool.query(
             `
       SELECT 1
-      FROM election_supervisors
+      FROM supervisors
       WHERE election_id = $1
         AND user_id = $2
       `,
