@@ -34,13 +34,13 @@ export const createCandidate = async (data) => {
     const election = await getElection(data.body.election_id)
 
     if (Date.now() < new Date(election.nomination_start))
-        throw new CustomError("Nomination period has not started yet", 403)
+        throw new CustomError("Nomination period has not started yet", 409)
 
     if (Date.now() > new Date(election.nomination_end))
-        throw new CustomError("Nominations are closed", 403)
+        throw new CustomError("Nominations are closed", 409)
 
     if (data.user.semester > 8)
-        throw new CustomError("Student is not eligible for nomination", 403)
+        throw new CustomError("Student is not eligible for nomination", 409)
 
     const existing = await pool.query(
         "SELECT * FROM candidates WHERE user_id = $1 AND election_id = $2",
