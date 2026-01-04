@@ -32,7 +32,7 @@ export const getAllElections = async () => {
 
 export const getSupervisors = async () => {
     const res = await pool.query(
-        "SELECT s.user_id, s.name, s.empcode, t.profile_pic, t.department FROM supervisors s JOIN teachers t ON s.user_id = t.user_id"
+        "SELECT s.user_id AS id, s.name, s.empcode, t.profile_pic, t.department FROM supervisors s JOIN teachers t ON s.user_id = t.user_id"
     )
 
     return res.rows
