@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser"
 import pool from "./db/db.js"
 import errorHandler from "./middleware/errorHandler.js"
 import notFound from "./middleware/notFound.js"
-import auth from "./middleware/auth.js"
+import authMiddleware from "./middleware/auth.js"
 
 import authRouter from "./routes/authRoute.js"
 import studentRouter from "./routes/studentRoute.js"
@@ -79,13 +79,13 @@ app.use("/auth", authRouter)
 app.use("/students", studentRouter)
 app.use("/teachers", teacherRouter)
 app.use("/users", userRouter)
-app.use("/classes", auth, classRouter)
-app.use("/elections", auth, electionRouter)
-app.use("/candidates", auth, candidateRouter)
-app.use("/notifications", auth, notificationRouter)
-app.use("/appeals", auth, appealRouter)
-app.use("/results", auth, resultRouter)
-app.use("/voters", auth, voterRouter)
+app.use("/classes", authMiddleware, classRouter)
+app.use("/elections", authMiddleware, electionRouter)
+app.use("/candidates", authMiddleware, candidateRouter)
+app.use("/notifications", authMiddleware, notificationRouter)
+app.use("/appeals", authMiddleware, appealRouter)
+app.use("/results", authMiddleware, resultRouter)
+app.use("/voters", authMiddleware, voterRouter)
 
 app.use(notFound)
 app.use(errorHandler)

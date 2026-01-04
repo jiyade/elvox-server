@@ -12,7 +12,17 @@ export const createAppeal = async (data) => {
     } = data?.body
     const { id: userId, name: userName, role: userRole } = data.user
 
+    const APPEAL_CATEGORIES = [
+        "candidate_application",
+        "election_result",
+        "voting_issue",
+        "account_access",
+        "other"
+    ]
+
     if (!category) throw new CustomError("Appeal category is required", 400)
+    if (!APPEAL_CATEGORIES.includes(category.toLowerCase()))
+        throw new CustomError("Invalid appeal category", 400)
     if (!electionId) throw new CustomError("Election is required", 400)
     if (!subject) throw new CustomError("Appeal subject is required", 400)
     if (!description)
@@ -33,7 +43,7 @@ export const createAppeal = async (data) => {
 
         const res = await client.query(
             "INSERT INTO appeals (user_id, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
-            [userId, electionId, category, subject, description]
+            [userId, electionId, category.toLowerCase(), subject, description]
         )
 
         const appealId = res.rows[0].id
@@ -156,6 +166,21 @@ export const updateAppealStatus = async (data) => {
         throw new CustomError("Invalid status", 400)
     }
 
+    const res = await pool.query(
+        "SELECT status, election_id from appeals WHERE id = $1",
+        [appealId]
+    )
+
+    if (res.rowCount === 0) throw new CustomError("Appeal not found", 404)
+
+    if (res.rows[0].status !== "pending")
+        throw new CustomError("Appeal already reviewed", 409)
+
+    const election = await getElection(res.rows[0].election_id)
+
+    if (Date.now() > new Date(election.election_end))
+        throw new CustomError("Election has closed", 409)
+
     const updateRes = await pool.query(
         "UPDATE appeals SET status = $1, admin_comment = $2 WHERE id = $3 AND status = 'pending' RETURNING id, status, admin_comment",
         [status, adminNote.trim(), appealId]
@@ -167,8 +192,6 @@ export const updateAppealStatus = async (data) => {
         "SELECT status FROM appeals WHERE id = $1",
         [appealId]
     )
-
-    if (checkRes.rowCount === 0) throw new CustomError("Appeal not found", 404)
 
     throw new CustomError("Appeal already resolved", 409)
 }

@@ -7,9 +7,10 @@ import {
     login,
     logout,
     resetPassword,
-    verifyMe
+    verifyMe,
+    checkIfSupervisor
 } from "../controllers/authController.js"
-import auth from "../middleware/auth.js"
+import authMiddleware from "../middleware/auth.js"
 
 const router = Router()
 
@@ -22,6 +23,7 @@ router.post("/login", login)
 router.post("/logout", logout)
 
 router.patch("/reset-password", resetPassword)
-router.get("/me", auth, verifyMe)
+router.get("/me", authMiddleware, verifyMe)
+router.get("/me/check-role", authMiddleware, checkIfSupervisor)
 
 export default router

@@ -10,6 +10,16 @@ export const createCandidate = async (data) => {
         throw new CustomError("Election is required", 400)
     if (!data?.body?.category)
         throw new CustomError("Category is required", 400)
+    if (!["general", "reserved"].includes(data?.body?.category.toLowerCase()))
+        throw new CustomError("Invalid category", 400)
+    if (
+        data?.body?.category.toLowerCase() === "reserved" &&
+        data?.user?.gender !== "female"
+    )
+        throw new CustomError(
+            "Male candidates cannot apply under reserved category",
+            409
+        )
     if (!data?.body?.nominee1Admno)
         throw new CustomError("Nominee 1 admission number is required", 400)
     if (!data?.body?.nominee2Admno)
@@ -24,13 +34,13 @@ export const createCandidate = async (data) => {
     const election = await getElection(data.body.election_id)
 
     if (Date.now() < new Date(election.nomination_start))
-        throw new CustomError("Nomination period has not started yet", 403)
+        throw new CustomError("Nomination period has not started yet", 409)
 
     if (Date.now() > new Date(election.nomination_end))
-        throw new CustomError("Nominations are closed", 403)
+        throw new CustomError("Nominations are closed", 409)
 
     if (data.user.semester > 8)
-        throw new CustomError("Student is not eligible for nomination", 403)
+        throw new CustomError("Student is not eligible for nomination", 409)
 
     const existing = await pool.query(
         "SELECT * FROM candidates WHERE user_id = $1 AND election_id = $2",
@@ -77,7 +87,7 @@ export const createCandidate = async (data) => {
                 election.id,
                 data.user.id,
                 data.user.name,
-                data.body.category,
+                data.body.category.toLowerCase(),
                 data.user.department_id,
                 data.user.department,
                 data.user.class_id,
@@ -379,7 +389,7 @@ export const reviewCandidate = async (candidateId, body, user) => {
             `Cannot ${
                 status === "approved" ? "approve" : "reject"
             } after nomination period ends`,
-            403
+            409
         )
 
     const client = await pool.connect()
@@ -405,11 +415,11 @@ export const reviewCandidate = async (candidateId, body, user) => {
         if (currentStatus === "withdrawn")
             throw new CustomError(
                 "Candidate already withdrew their application",
-                400
+                409
             )
 
         if (currentStatus !== "pending")
-            throw new CustomError("Candidate already reviewed", 400)
+            throw new CustomError("Candidate already reviewed", 409)
 
         if (tutorId !== class_id)
             throw new CustomError(

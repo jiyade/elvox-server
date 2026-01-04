@@ -19,3 +19,13 @@ export const checkTeacherExists = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getSupervisorEligibleTeachers = async (req, res, next) => {
+    try {
+        const data = await teacherService.getSupervisorEligibleTeachers()
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
