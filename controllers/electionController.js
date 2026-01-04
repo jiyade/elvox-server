@@ -43,8 +43,8 @@ export const getSupervisors = async (req, res, next) => {
 export const updateSupervisors = async (req, res, next) => {
     try {
         const data = await electionService.updateSupervisors(
-            req.params.electionId,
-            req.body.payload
+            req.params.id,
+            req.body
         )
 
         return res.status(200).json(data)

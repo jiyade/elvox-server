@@ -40,9 +40,10 @@ export const getSupervisors = async () => {
 
 export const updateSupervisors = async (electionId, payload) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
-    if (!payload?.add || !payload?.remove)
+    if (!payload?.add || !payload?.remove) {
+        console.log("here", payload)
         throw new CustomError("Invalid payload", 400)
-
+    }
     if (!Array.isArray(payload.add) || !Array.isArray(payload.remove))
         throw new CustomError("Invalid payload", 400)
 
