@@ -389,7 +389,7 @@ export const reviewCandidate = async (candidateId, body, user) => {
             `Cannot ${
                 status === "approved" ? "approve" : "reject"
             } after nomination period ends`,
-            403
+            409
         )
 
     const client = await pool.connect()
@@ -415,11 +415,11 @@ export const reviewCandidate = async (candidateId, body, user) => {
         if (currentStatus === "withdrawn")
             throw new CustomError(
                 "Candidate already withdrew their application",
-                400
+                409
             )
 
         if (currentStatus !== "pending")
-            throw new CustomError("Candidate already reviewed", 400)
+            throw new CustomError("Candidate already reviewed", 409)
 
         if (tutorId !== class_id)
             throw new CustomError(
