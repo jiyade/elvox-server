@@ -386,3 +386,30 @@ export const resetPassword = async (data) => {
 
     return { message: "Password reset successfully" }
 }
+
+export const checkIfSupervisor = async (userId, userRole, electionId) => {
+    let effectiveRole = userRole
+    let isSupervisor = false
+
+    if (electionId && userRole === "teacher") {
+        const res = await pool.query(
+            `
+      SELECT 1
+      FROM election_supervisors
+      WHERE election_id = $1
+        AND user_id = $2
+      `,
+            [electionId, userId]
+        )
+
+        if (res.rowCount > 0) {
+            effectiveRole = "supervisor"
+            isSupervisor = true
+        }
+    }
+
+    return {
+        isSupervisor,
+        effectiveRole
+    }
+}

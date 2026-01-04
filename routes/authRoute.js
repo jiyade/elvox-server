@@ -7,7 +7,8 @@ import {
     login,
     logout,
     resetPassword,
-    verifyMe
+    verifyMe,
+    checkIfSupervisor
 } from "../controllers/authController.js"
 import authMiddleware from "../middleware/auth.js"
 
@@ -23,5 +24,6 @@ router.post("/logout", logout)
 
 router.patch("/reset-password", resetPassword)
 router.get("/me", authMiddleware, verifyMe)
+router.get("/me/check-role", authMiddleware, checkIfSupervisor)
 
 export default router
