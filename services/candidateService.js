@@ -10,6 +10,16 @@ export const createCandidate = async (data) => {
         throw new CustomError("Election is required", 400)
     if (!data?.body?.category)
         throw new CustomError("Category is required", 400)
+    if (!["general", "reserved"].includes(data?.body?.category.toLowerCase()))
+        throw new CustomError("Invalid category", 400)
+    if (
+        data?.body?.category.toLowerCase() === "reserved" &&
+        data?.user?.gender !== "female"
+    )
+        throw new CustomError(
+            "Male candidates cannot apply under reserved category",
+            409
+        )
     if (!data?.body?.nominee1Admno)
         throw new CustomError("Nominee 1 admission number is required", 400)
     if (!data?.body?.nominee2Admno)
@@ -77,7 +87,7 @@ export const createCandidate = async (data) => {
                 election.id,
                 data.user.id,
                 data.user.name,
-                data.body.category,
+                data.body.category.toLowerCase(),
                 data.user.department_id,
                 data.user.department,
                 data.user.class_id,
