@@ -13,7 +13,7 @@ const router = Router()
 router.get("/", getAppeals)
 router.post(
     "/",
-    requireRole(["student", "teacher", "supervisor"]),
+    requireRole(["student", "teacher"]),
     upload.array("attachments", 3),
     createAppeal
 )

@@ -34,10 +34,6 @@ router.patch(
 )
 router.patch("/:id/status", requireRole(["tutor"]), reviewCandidate)
 router.get("/exists/:id", checkCandidateExists)
-router.get(
-    "/:id",
-    requireRole(["teacher", "supervisor", "admin"]),
-    getCandidate
-)
+router.get("/:id", requireRole(["teacher", "admin"]), getCandidate)
 
 export default router
