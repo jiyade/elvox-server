@@ -62,3 +62,13 @@ export const createElection = async (req, res, next) => {
         next(err)
     }
 }
+
+export const deleteElection = async (req, res, next) => {
+    try {
+        await electionService.deleteElection(req.params.id)
+
+        return res.status(204).end()
+    } catch (err) {
+        next(err)
+    }
+}

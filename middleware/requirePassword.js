@@ -3,7 +3,13 @@ import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 
 const requirePassword = async (req, res, next) => {
-    const { password } = req.body
+    let password
+
+    if (req.method === "DELETE") {
+        password = req.headers["x-admin-password"]
+    } else {
+        password = req.body?.password
+    }
 
     if (!password) throw new CustomError("Password is required", 400)
 

@@ -192,3 +192,63 @@ export const createElection = async (data) => {
         client.release()
     }
 }
+
+export const deleteElection = async (electionId) => {
+    if (!electionId) throw new CustomError("Election id is required", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const electionRes = await client.query(
+            "SELECT status, name FROM elections WHERE id = $1 FOR UPDATE",
+            [electionId]
+        )
+
+        if (electionRes.rowCount === 0)
+            throw new CustomError("No election found", 404)
+
+        if (electionRes.rows[0].status !== "draft")
+            throw new CustomError(
+                "This election cannot be deleted in its current state",
+                409
+            )
+
+        await client.query("DELETE FROM elections WHERE id = $1", [electionId])
+
+        const userIdsRes = await client.query(
+            "SELECT id FROM users WHERE role != 'admin'"
+        )
+        const userIds = userIdsRes.rows.map((row) => row.id)
+
+        const adminUsers = await client.query(
+            "SELECT id FROM users WHERE role = 'admin'"
+        )
+        const adminIds = adminUsers.rows.map((row) => row.id)
+
+        await sendNotification(
+            adminIds,
+            {
+                message: `Election "${electionRes.rows[0].name}" has been deleted`,
+                type: "warning"
+            },
+            client
+        )
+        await sendNotification(
+            userIds,
+            {
+                message: `Election "${electionRes.rows[0].name}" has been deleted`,
+                type: "info"
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
