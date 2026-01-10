@@ -252,3 +252,207 @@ export const deleteElection = async (electionId) => {
         client.release()
     }
 }
+
+export const updateElection = async (electionId, data) => {
+    if (!electionId) throw new CustomError("Election id is required", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const electionRes = await client.query(
+            "SELECT * FROM elections WHERE id = $1 FOR UPDATE",
+            [electionId]
+        )
+
+        if (electionRes.rowCount === 0)
+            throw new CustomError("No election found", 404)
+
+        const EDITABLE_FIELDS = {
+            draft: [
+                "name",
+                "nomination_start",
+                "nomination_end",
+                "voting_start",
+                "voting_end",
+                "election_end"
+            ],
+            nominations: [
+                "nomination_end",
+                "voting_start",
+                "voting_end",
+                "election_end"
+            ],
+            "pre-voting": ["voting_start", "voting_end", "election_end"],
+            voting: ["voting_end", "election_end"],
+            "post-voting": ["election_end"],
+            closed: []
+        }
+
+        const clientToDBMap = {
+            electionName: "name",
+            nominationStart: "nomination_start",
+            nominationEnd: "nomination_end",
+            votingStart: "voting_start",
+            votingEnd: "voting_end",
+            electionEnd: "election_end"
+        }
+
+        for (const key of Object.keys(data)) {
+            const dbField = clientToDBMap[key]
+
+            if (!dbField) {
+                throw new CustomError("Invalid field in request", 400)
+            }
+
+            if (
+                !EDITABLE_FIELDS[electionRes.rows[0].status].includes(dbField)
+            ) {
+                throw new CustomError(
+                    `Field '${key}' cannot be updated when election is in '${electionRes.rows[0].status}' state`,
+                    409
+                )
+            }
+        }
+
+        if (Object.keys(data).length === 0)
+            throw new CustomError("No fields provided to update", 400)
+
+        const updated = {
+            name: data.electionName ?? electionRes.rows[0].name,
+            nomination_start:
+                data.nominationStart ?? electionRes.rows[0].nomination_start,
+            nomination_end:
+                data.nominationEnd ?? electionRes.rows[0].nomination_end,
+            voting_start: data.votingStart ?? electionRes.rows[0].voting_start,
+            voting_end: data.votingEnd ?? electionRes.rows[0].voting_end,
+            election_end: data.electionEnd ?? electionRes.rows[0].election_end
+        }
+
+        const now = new Date()
+
+        if (electionRes.rows[0].status === "draft") {
+            if (updated.nomination_start <= now)
+                throw new CustomError(
+                    "Nomination start must be in the future",
+                    400
+                )
+
+            if (updated.nomination_start >= updated.nomination_end)
+                throw new CustomError("Nomination end must be after start", 400)
+
+            if (updated.nomination_end >= updated.voting_start)
+                throw new CustomError(
+                    "Voting must start after nominations",
+                    400
+                )
+
+            if (updated.voting_start >= updated.voting_end)
+                throw new CustomError("Voting end must be after start", 400)
+
+            if (updated.voting_end >= updated.election_end)
+                throw new CustomError(
+                    "Election end must be after voting ends",
+                    400
+                )
+        }
+        if (electionRes.rows[0].status === "nominations") {
+            if (updated.nomination_start >= updated.nomination_end)
+                throw new CustomError("Nomination end must be after start", 400)
+
+            if (updated.nomination_end >= updated.voting_start)
+                throw new CustomError(
+                    "Voting must start after nominations",
+                    400
+                )
+
+            if (updated.voting_start >= updated.voting_end)
+                throw new CustomError("Voting end must be after start", 400)
+
+            if (updated.voting_end >= updated.election_end)
+                throw new CustomError(
+                    "Election end must be after voting ends",
+                    400
+                )
+        }
+        if (electionRes.rows[0].status === "pre-voting") {
+            if (updated.nomination_end >= updated.voting_start)
+                throw new CustomError(
+                    "Voting must start after nominations",
+                    400
+                )
+
+            if (updated.voting_start >= updated.voting_end)
+                throw new CustomError("Voting end must be after start", 400)
+
+            if (updated.voting_end >= updated.election_end)
+                throw new CustomError(
+                    "Election end must be after voting ends",
+                    400
+                )
+        }
+        if (electionRes.rows[0].status === "voting") {
+            if (updated.voting_start >= updated.voting_end)
+                throw new CustomError("Voting end must be after start", 400)
+
+            if (updated.voting_end >= updated.election_end)
+                throw new CustomError(
+                    "Election end must be after voting ends",
+                    400
+                )
+        }
+        if (electionRes.rows[0].status === "post-voting") {
+            if (updated.voting_end >= updated.election_end)
+                throw new CustomError(
+                    "Election end must be after voting ends",
+                    400
+                )
+        }
+
+        const res = await client.query(
+            `
+            UPDATE elections
+            SET
+            name = $1,
+            nomination_start = $2,
+            nomination_end = $3,
+            voting_start = $4,
+            voting_end = $5,
+            election_end = $6
+            WHERE id = $7
+            RETURNING *
+            `,
+            [
+                updated.name,
+                updated.nomination_start,
+                updated.nomination_end,
+                updated.voting_start,
+                updated.voting_end,
+                updated.election_end,
+                electionId
+            ]
+        )
+
+        const userIdsRes = await client.query("SELECT id FROM users")
+        const userIds = userIdsRes.rows.map((row) => row.id)
+
+        await sendNotification(
+            userIds,
+            {
+                message: `Election "${electionRes.rows[0].name}" has been updated`,
+                type: "info"
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        return res.rows[0]
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}

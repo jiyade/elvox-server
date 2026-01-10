@@ -72,3 +72,16 @@ export const deleteElection = async (req, res, next) => {
         next(err)
     }
 }
+
+export const updateElection = async (req, res, next) => {
+    try {
+        const data = await electionService.updateElection(
+            req.params.id,
+            req.body
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

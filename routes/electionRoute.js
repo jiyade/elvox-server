@@ -2,6 +2,7 @@ import { Router } from "express"
 import {
     createElection,
     deleteElection,
+    updateElection,
     getAllElections,
     getElection,
     getElections,
@@ -19,6 +20,7 @@ router.post("/", requireRole(["admin"]), createElection)
 router.get("/supervisors", requireRole(["admin"]), getSupervisors)
 router.post("/:id/supervisors", requireRole(["admin"]), updateSupervisors)
 router.delete("/:id", requireRole(["admin"]), requirePassword, deleteElection)
+router.patch("/:id", requireRole(["admin"]), updateElection)
 router.get("/:id", getElection)
 
 export default router
