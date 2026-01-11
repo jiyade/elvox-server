@@ -85,3 +85,26 @@ export const updateElection = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getReservedClasses = async (req, res, next) => {
+    try {
+        const data = await electionService.getReservedClasses(req.params.id)
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
+export const updateReservedClasses = async (req, res, next) => {
+    try {
+        const data = await electionService.updateReservedClasses(
+            req.params.id,
+            req.body
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

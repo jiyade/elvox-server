@@ -7,6 +7,8 @@ import {
     getElection,
     getElections,
     getSupervisors,
+    getReservedClasses,
+    updateReservedClasses,
     updateSupervisors
 } from "../controllers/electionController.js"
 import requireRole from "../middleware/requireRole.js"
@@ -19,6 +21,16 @@ router.get("/all", getAllElections)
 router.post("/", requireRole(["admin"]), createElection)
 router.get("/supervisors", requireRole(["admin"]), getSupervisors)
 router.post("/:id/supervisors", requireRole(["admin"]), updateSupervisors)
+router.get(
+    "/:id/category-config",
+    requireRole(["admin", "student"]),
+    getReservedClasses
+)
+router.patch(
+    "/:id/category-config",
+    requireRole(["admin"]),
+    updateReservedClasses
+)
 router.delete("/:id", requireRole(["admin"]), requirePassword, deleteElection)
 router.patch("/:id", requireRole(["admin"]), updateElection)
 router.get("/:id", getElection)

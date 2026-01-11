@@ -456,3 +456,53 @@ export const updateElection = async (electionId, data) => {
         client.release()
     }
 }
+
+export const getReservedClasses = async (id) => {
+    if (!id) throw new CustomError("Election id is required", 400)
+
+    const res = await pool.query(
+        "SELECT status, category_config FROM elections WHERE id = $1",
+        [id]
+    )
+
+    if (res.rowCount === 0) throw new CustomError("No election found", 404)
+
+    return res.rows[0].category_config
+}
+
+export const updateReservedClasses = async (id, data) => {
+    if (!id) throw new CustomError("Election id is required", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const res = await client.query(
+            "SELECT status FROM elections WHERE id = $1 FOR UPDATE",
+            [id]
+        )
+
+        if (res.rowCount === 0) throw new CustomError("No election found", 404)
+
+        if (res.rows[0].status !== "draft")
+            throw new CustomError(
+                "Reserved category can only be configured while the election is in draft state",
+                409
+            )
+
+        await client.query(
+            "UPDATE elections SET category_config = $1::jsonb WHERE id = $2",
+            [JSON.stringify(data.classIds.map(Number)), id]
+        )
+
+        await client.query("COMMIT")
+
+        return { message: "Reserved classes updated successfully" }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
