@@ -9,7 +9,8 @@ import {
     getSupervisors,
     getReservedClasses,
     updateReservedClasses,
-    updateSupervisors
+    updateSupervisors,
+    updateAutoPublishResults
 } from "../controllers/electionController.js"
 import requireRole from "../middleware/requireRole.js"
 import requirePassword from "../middleware/requirePassword.js"
@@ -30,6 +31,11 @@ router.patch(
     "/:id/category-config",
     requireRole(["admin"]),
     updateReservedClasses
+)
+router.patch(
+    "/:id/auto-publish",
+    requireRole(["admin"]),
+    updateAutoPublishResults
 )
 router.delete("/:id", requireRole(["admin"]), requirePassword, deleteElection)
 router.patch("/:id", requireRole(["admin"]), updateElection)

@@ -7,7 +7,13 @@ export const getElections = async () => {
         "SELECT * FROM elections WHERE status != 'closed' ORDER BY election_start DESC"
     )
 
-    return res.rows[0]
+    const {
+        desktop_voting_key_hash,
+        desktop_voting_key_generated_at,
+        ...data
+    } = res.rows[0]
+
+    return data
 }
 
 export const getElection = async (id) => {
@@ -499,6 +505,48 @@ export const updateReservedClasses = async (id, data) => {
         await client.query("COMMIT")
 
         return { message: "Reserved classes updated successfully" }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
+export const updateAutoPublishResults = async (id, data) => {
+    if (!id) throw new CustomError("Election id is required", 400)
+
+    if (typeof data.autoPublish !== "boolean")
+        throw new CustomError("Invalid input", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const res = await client.query(
+            "SELECT status FROM elections WHERE id = $1 FOR UPDATE",
+            [id]
+        )
+
+        if (res.rowCount === 0) throw new CustomError("No election found", 404)
+
+        const NOT_ALLOWED = ["post-voting", "closed"]
+
+        if (NOT_ALLOWED.includes(res.rows[0].status))
+            throw new CustomError(
+                "Auto publish results can only be changed before post-voting",
+                409
+            )
+
+        await client.query(
+            "UPDATE elections SET auto_publish_results = $1 WHERE id = $2",
+            [data.autoPublish, id]
+        )
+
+        await client.query("COMMIT")
+
+        return { message: "Auto publish results updated successfully" }
     } catch (err) {
         await client.query("ROLLBACK")
         throw err

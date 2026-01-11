@@ -108,3 +108,16 @@ export const updateReservedClasses = async (req, res, next) => {
         next(err)
     }
 }
+
+export const updateAutoPublishResults = async (req, res, next) => {
+    try {
+        const data = await electionService.updateAutoPublishResults(
+            req.params.id,
+            req.body
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
