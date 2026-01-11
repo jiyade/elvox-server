@@ -24,6 +24,16 @@ export const createCandidate = async (data) => {
         throw new CustomError("Nominee 1 admission number is required", 400)
     if (!data?.body?.nominee2Admno)
         throw new CustomError("Nominee 2 admission number is required", 400)
+
+    if (
+        data?.user?.admno === data?.body?.nominee1Admno ||
+        data?.user?.admno === data?.body?.nominee2Admno
+    )
+        throw new CustomError(
+            "You cannot choose yourself as your own nominee",
+            403
+        )
+
     if (!data?.files?.signature?.[0])
         throw new CustomError("Signature is required", 400)
     if (!data?.files?.nominee1Proof?.[0])
@@ -53,8 +63,34 @@ export const createCandidate = async (data) => {
             409
         )
 
+    const { rowCount } = await pool.query(
+        `
+        SELECT 1
+        FROM elections
+        WHERE id = $1
+        AND category_config @> to_jsonb($2::int)
+        `,
+        [election.id, Number(data.user.class_id)]
+    )
+
+    if (data.body.category?.toLowerCase() === "reserved" && rowCount === 0) {
+        throw new CustomError(
+            "Your class is not allowed to apply under reserved category",
+            403
+        )
+    }
+
     const nominee1 = await getStudent(data.body.nominee1Admno)
     const nominee2 = await getStudent(data.body.nominee2Admno)
+
+    if (
+        data?.user?.class_id !== nominee1?.class_id ||
+        data?.user?.class_id !== nominee2?.class_id
+    )
+        throw new CustomError(
+            "Nominees must be of the same class as the candidate",
+            403
+        )
 
     let signature, nominee1Proof, nominee2Proof
 
