@@ -205,12 +205,13 @@ export const signup = async (data) => {
         person = await getTeacher(empcode, false)
     }
 
-    const { name, profile_pic, phone, user_id } = person
+    const { name, profile_pic, user_id } = person
 
     if (!person.email || !person.phone)
         throw new CustomError("No email or phone for this record", 400)
 
     const email = person.email.trim().toLowerCase()
+    const phone = person.phone.trim()
 
     const existing = await pool.query("SELECT * FROM users WHERE id = $1", [
         user_id
@@ -286,7 +287,9 @@ export const login = async (data) => {
 
     if (!password) throw new CustomError("Password is required", 400)
 
-    const res = await pool.query(`SELECT * FROM users WHERE ${type}=$1`, [eop])
+    const res = await pool.query(`SELECT * FROM users WHERE ${type} = $1`, [
+        type === "email" ? eop.trim().toLowerCase() : eop.trim()
+    ])
 
     if (res.rowCount === 0) throw new CustomError("Invalid credentials", 401)
 
