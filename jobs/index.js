@@ -1,5 +1,6 @@
 import pool from "../db/db.js"
 import { advanceElectionStatus } from "./advanceElectionStatus.js"
+import { sendDeadlineNotifications } from "./sendDeadlineNotifications.js"
 
 let running = false
 
@@ -18,6 +19,7 @@ const runCron = async () => {
 
         for (const { id } of rows) {
             await advanceElectionStatus(client, id)
+            await sendDeadlineNotifications(pool, id)
         }
 
         await client.query("COMMIT")
