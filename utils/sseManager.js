@@ -27,6 +27,10 @@ export const emitLog = (electionId, log) => {
     if (!clients) return
 
     clients.forEach((client) => {
-        client.write(`data: ${JSON.stringify(log)}\n\n`)
+        try {
+            client.write(`data: ${JSON.stringify(log)}\n\n`)
+        } catch (err) {
+            console.error("[emitLog] Write failed:", err)
+        }
     })
 }
