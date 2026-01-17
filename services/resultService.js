@@ -110,7 +110,7 @@ export const getRandomCandidatesResults = async (limit) => {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 3, 10))
 
     const electionRes = await pool.query(
-        "SELECT id, name FROM elections WHERE status = 'closed' ORDER BY election_end DESC LIMIT 1"
+        "SELECT id, name FROM elections WHERE status = 'post-voting' OR status = 'closed' ORDER BY election_end DESC LIMIT 1"
     )
 
     if (electionRes.rowCount === 0) return []
