@@ -44,7 +44,7 @@ export const getAppeal = async (req, res, next) => {
 
 export const updateAppealStatus = async (req, res, next) => {
     try {
-        const data = await appealService.updateAppealStatus({
+        const data = await appealService.updateAppealStatus(req.user, {
             appealId: req.params.id,
             adminNote: req.body.adminNote,
             status: req.body.status

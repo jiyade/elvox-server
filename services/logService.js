@@ -27,12 +27,14 @@ export const getLogs = async (id, range = "all") => {
     return res.rows
 }
 
-export const createLog = async (electionId, data) => {
+export const createLog = async (electionId, data, client = null) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
     if (!data?.level) throw new CustomError("Log level is required", 400)
     if (!data?.message) throw new CustomError("Log message is required", 400)
 
-    const electionRes = await pool.query(
+    const executor = client ?? pool
+
+    const electionRes = await executor.query(
         "SELECT status FROM elections WHERE id = $1 LIMIT 1",
         [electionId]
     )
@@ -43,7 +45,7 @@ export const createLog = async (electionId, data) => {
     if (electionRes.rows[0].status === "closed")
         throw new CustomError("Logs cannot be created at this state", 409)
 
-    const logRes = await pool.query(
+    const logRes = await executor.query(
         "INSERT INTO logs (election_id, level, message) VALUES ($1, $2, $3) RETURNING *",
         [electionId, data?.level, data?.message]
     )

@@ -3,13 +3,15 @@ import CustomError from "../utils/CustomError.js"
 import pool from "../db/db.js"
 import { checkStudentExists } from "./studentService.js"
 import { getElectionDetails } from "./electionService.js"
+import capitalize from "../utils/capitalize.js"
+import { createLog } from "./logService.js"
 
-export const verifyVoter = async (data) => {
-    const { admno, electionId, userId } = data
+export const verifyVoter = async (user, data) => {
+    const { admno, electionId } = data
 
     if (!admno) throw new CustomError("Admission number is required", 400)
     if (!electionId) throw new CustomError("Election id is required", 400)
-    if (!userId) throw new CustomError("Supervisor id is required", 400)
+    if (!user.id) throw new CustomError("Supervisor id is required", 400)
 
     const election = await getElectionDetails(electionId)
 
@@ -32,7 +34,7 @@ export const verifyVoter = async (data) => {
         // INSERT INTO VOTERS, IF EXISTS DO NOTHING
         const voterRes = await client.query(
             "INSERT INTO voters (admno, election_id, verified_by) VALUES ($1, $2, $3) ON CONFLICT (admno, election_id) DO NOTHING RETURNING *",
-            [admno, electionId, userId]
+            [admno, electionId, user.id]
         )
 
         // IF VOTER ROW EXISTS, CHECK IF ALREADY VOTED
@@ -65,6 +67,17 @@ export const verifyVoter = async (data) => {
         const otpRes = await client.query(
             "INSERT INTO otp_verifications (admno, election_id, otp_hash, expires_at) VALUES ($1, $2, $3, $4) RETURNING created_at",
             [admno, electionId, otpHash, expiresAt]
+        )
+
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Voter verified for election "${
+                    election.name
+                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+            },
+            client
         )
 
         await client.query("COMMIT")

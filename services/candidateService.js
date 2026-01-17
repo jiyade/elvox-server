@@ -4,6 +4,7 @@ import { uploadFile, deleteFile, getURL } from "../utils/file.js"
 import { getElectionDetails } from "./electionService.js"
 import { getStudent } from "./studentService.js"
 import { sendNotification } from "./notificationService.js"
+import { createLog } from "./logService.js"
 
 export const createCandidate = async (data) => {
     if (!data?.body?.election_id)
@@ -158,6 +159,15 @@ export const createCandidate = async (data) => {
                 "Your candidate application has been submitted successfully and is awaiting review by your tutor",
             type: "info"
         }
+
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Candidate created: "${data.user.name}" (id: ${data.user.id}) for election "${election.name}"`
+            },
+            client
+        )
 
         await sendNotification(
             [tutorRes.rows[0].user_id],
@@ -354,7 +364,7 @@ export const withdrawCandidate = async (data) => {
         // 1. Lock + read current status
         const res = await client.query(
             `
-            SELECT status, user_id, class_id
+            SELECT status, user_id, name, class_id
             FROM candidates
             WHERE id = $1
             FOR UPDATE`,
@@ -393,6 +403,15 @@ export const withdrawCandidate = async (data) => {
                 "A candidate application has been withdrawn from your class",
             type: "info"
         }
+
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Candidate withdrawn: "${res.rows[0].name}" (id: ${res.rows[0].user_id}) for election "${election.name}"`
+            },
+            client
+        )
 
         await sendNotification(
             [res.rows[0].user_id],
@@ -449,7 +468,7 @@ export const reviewCandidate = async (candidateId, body, user) => {
         // 1. Lock candidate row
         const { rows } = await client.query(
             `
-            SELECT status, class_id, user_id
+            SELECT status, class_id, user_id, name
             FROM candidates
             WHERE id = $1
             FOR UPDATE`,
@@ -459,7 +478,12 @@ export const reviewCandidate = async (candidateId, body, user) => {
         if (rows.length === 0)
             throw new CustomError("No candidate application found", 404)
 
-        const { status: currentStatus, class_id, user_id: userId } = rows[0]
+        const {
+            status: currentStatus,
+            class_id,
+            user_id: userId,
+            name
+        } = rows[0]
 
         if (currentStatus === "withdrawn")
             throw new CustomError(
@@ -493,6 +517,15 @@ export const reviewCandidate = async (candidateId, body, user) => {
                           "Your candidate application has been rejected. Please check the reason provided by your tutor",
                       type: "error"
                   }
+
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Candidate ${status}: "${name}" for election "${election.name}" by Tutor ${tutorName} (id: ${tutorUserId})`
+            },
+            client
+        )
 
         await sendNotification([userId], notificationOptions, client)
 

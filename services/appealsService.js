@@ -1,7 +1,10 @@
 import pool from "../db/db.js"
+import capitalize from "../utils/capitalize.js"
 import CustomError from "../utils/CustomError.js"
 import { getURL, uploadFile } from "../utils/file.js"
 import { getElectionDetails } from "./electionService.js"
+import { createLog } from "./logService.js"
+import { sendNotification } from "./notificationService.js"
 
 export const createAppeal = async (data) => {
     const {
@@ -74,6 +77,31 @@ export const createAppeal = async (data) => {
                 )
             }
         }
+
+        const adminUsers = await client.query(
+            "SELECT id FROM users WHERE role = 'admin'"
+        )
+        const adminIds = adminUsers.rows.map((row) => row.id)
+
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Appeal submitted by ${capitalize(
+                    userRole
+                )} ${userName} (id: ${userId}) for election "${election.name}"`
+            },
+            client
+        )
+
+        await sendNotification(
+            adminIds,
+            {
+                message: `An appeal has been submitted`,
+                type: "info"
+            },
+            client
+        )
 
         await client.query("COMMIT")
 
@@ -165,7 +193,7 @@ export const getAppeal = async (data) => {
     return appeal
 }
 
-export const updateAppealStatus = async (data) => {
+export const updateAppealStatus = async (user, data) => {
     const { appealId, adminNote, status } = data
 
     if (!adminNote?.trim()) throw new CustomError("Admin note is required", 400)
@@ -179,7 +207,7 @@ export const updateAppealStatus = async (data) => {
         await client.query("BEGIN")
 
         const appealRes = await client.query(
-            `SELECT status, election_id
+            `SELECT status, election_id, user_id
              FROM appeals
              WHERE id = $1
              FOR UPDATE`,
@@ -205,7 +233,28 @@ export const updateAppealStatus = async (data) => {
             [status, adminNote.trim(), appealId]
         )
 
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Appeal ${status} for election "${
+                    election.name
+                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+            },
+            client
+        )
+
+        await sendNotification(
+            [appealRes.rows[0].user_id],
+            {
+                message: `Your appeal has been ${status}`,
+                type: "info"
+            },
+            client
+        )
+
         await client.query("COMMIT")
+
         return updateRes.rows[0]
     } catch (err) {
         await client.query("ROLLBACK")

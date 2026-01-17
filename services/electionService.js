@@ -3,6 +3,8 @@ import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import { sendNotification } from "./notificationService.js"
 import hashSecretKey from "../utils/hashSecretKey.js"
+import capitalize from "../utils/capitalize.js"
+import { createLog } from "./logService.js"
 
 export const getElection = async (role) => {
     const res = await pool.query(
@@ -63,7 +65,7 @@ export const getSupervisors = async () => {
     return res.rows
 }
 
-export const updateSupervisors = async (electionId, payload) => {
+export const updateSupervisors = async (user, electionId, payload) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
     if (!payload?.add || !payload?.remove)
         throw new CustomError("Invalid payload", 400)
@@ -77,7 +79,7 @@ export const updateSupervisors = async (electionId, payload) => {
         await client.query("BEGIN")
 
         const { rows } = await client.query(
-            "SELECT NOW() > voting_end AS voting_ended FROM elections WHERE id = $1 FOR UPDATE",
+            "SELECT name, NOW() > voting_end AS voting_ended FROM elections WHERE id = $1 FOR UPDATE",
             [electionId]
         )
 
@@ -139,6 +141,21 @@ export const updateSupervisors = async (electionId, payload) => {
             addedCount = res.rowCount
         }
 
+        if (addedCount > 0 || removedCount > 0) {
+            await createLog(
+                electionId,
+                {
+                    level: "info",
+                    message: `Supervisors updated for election "${
+                        rows[0].name
+                    }" by ${capitalize(user.role)} ${user.name} (id: ${
+                        user.id
+                    })`
+                },
+                client
+            )
+        }
+
         await client.query("COMMIT")
 
         return {
@@ -154,7 +171,7 @@ export const updateSupervisors = async (electionId, payload) => {
     }
 }
 
-export const createElection = async (data) => {
+export const createElection = async (user, data) => {
     const {
         electionName,
         nominationStart,
@@ -218,6 +235,17 @@ export const createElection = async (data) => {
         const userIdsRes = await client.query("SELECT id FROM users")
         const userIds = userIdsRes.rows.map((row) => row.id)
 
+        await createLog(
+            res.rows[0].id,
+            {
+                level: "info",
+                message: `Election created: "${electionName}" by ${capitalize(
+                    user.role
+                )} ${user.name} (id: ${user.id})`
+            },
+            client
+        )
+
         await sendNotification(
             userIds,
             {
@@ -238,7 +266,7 @@ export const createElection = async (data) => {
     }
 }
 
-export const deleteElection = async (electionId) => {
+export const deleteElection = async (user, electionId) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
 
     const client = await pool.connect()
@@ -272,6 +300,17 @@ export const deleteElection = async (electionId) => {
         )
         const adminIds = adminUsers.rows.map((row) => row.id)
 
+        await createLog(
+            electionId,
+            {
+                level: "warning",
+                message: `Election deleted: "${
+                    electionRes.rows[0].name
+                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+            },
+            client
+        )
+
         await sendNotification(
             adminIds,
             {
@@ -298,7 +337,7 @@ export const deleteElection = async (electionId) => {
     }
 }
 
-export const updateElection = async (electionId, data) => {
+export const updateElection = async (user, electionId, data) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
 
     const client = await pool.connect()
@@ -482,6 +521,17 @@ export const updateElection = async (electionId, data) => {
         const userIdsRes = await client.query("SELECT id FROM users")
         const userIds = userIdsRes.rows.map((row) => row.id)
 
+        await createLog(
+            electionId,
+            {
+                level: "info",
+                message: `Election updated: "${
+                    electionRes.rows[0].name
+                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+            },
+            client
+        )
+
         await sendNotification(
             userIds,
             {
@@ -515,7 +565,7 @@ export const getReservedClasses = async (id) => {
     return res.rows[0].category_config
 }
 
-export const updateReservedClasses = async (id, data) => {
+export const updateReservedClasses = async (user, id, data) => {
     if (!id) throw new CustomError("Election id is required", 400)
 
     const client = await pool.connect()
@@ -524,7 +574,7 @@ export const updateReservedClasses = async (id, data) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "SELECT status FROM elections WHERE id = $1 FOR UPDATE",
+            "SELECT status, name FROM elections WHERE id = $1 FOR UPDATE",
             [id]
         )
 
@@ -539,6 +589,17 @@ export const updateReservedClasses = async (id, data) => {
         await client.query(
             "UPDATE elections SET category_config = $1::jsonb WHERE id = $2",
             [JSON.stringify(data.classIds.map(Number)), id]
+        )
+
+        await createLog(
+            id,
+            {
+                level: "info",
+                message: `Reserved classes updated for election "${
+                    res.rows[0].name
+                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+            },
+            client
         )
 
         await client.query("COMMIT")
@@ -564,7 +625,7 @@ export const updateAutoPublishResults = async (id, data) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "SELECT status FROM elections WHERE id = $1 FOR UPDATE",
+            "SELECT status, name FROM elections WHERE id = $1 FOR UPDATE",
             [id]
         )
 
@@ -583,6 +644,17 @@ export const updateAutoPublishResults = async (id, data) => {
             [data.autoPublish, id]
         )
 
+        await createLog(
+            id,
+            {
+                level: "info",
+                message: `Auto-publish results setting updated for election "${
+                    res.rows[0].name
+                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+            },
+            client
+        )
+
         await client.query("COMMIT")
 
         return { message: "Auto publish results updated successfully" }
@@ -595,7 +667,7 @@ export const updateAutoPublishResults = async (id, data) => {
 }
 
 // GENERATES OR REGENERATES THE SECRET KEY
-export const generateSecretKey = async (id) => {
+export const generateSecretKey = async (user, id) => {
     if (!id) throw new CustomError("Election id is required", 400)
 
     const client = await pool.connect()
@@ -604,7 +676,7 @@ export const generateSecretKey = async (id) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "SELECT status FROM elections WHERE id = $1 FOR UPDATE",
+            "SELECT status, name, desktop_voting_key_hash FROM elections WHERE id = $1 FOR UPDATE",
             [id]
         )
 
@@ -630,6 +702,21 @@ export const generateSecretKey = async (id) => {
             WHERE id = $2
             `,
             [hashedKey, id]
+        )
+
+        await createLog(
+            id,
+            {
+                level: "warning",
+                message: `Secret key ${
+                    res.rows[0].desktop_voting_key_hash === null
+                        ? "generated"
+                        : "regenerated"
+                } for election "${res.rows[0].name}" by ${capitalize(
+                    user.role
+                )} ${user.name} (id: ${user.id})`
+            },
+            client
         )
 
         await client.query("COMMIT")
