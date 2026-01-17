@@ -102,6 +102,15 @@ export const updateSupervisors = async (electionId, payload) => {
                 [electionId, removeIds]
             )
 
+            await sendNotification(
+                removeIds,
+                {
+                    message: "You have been removed from supervisors",
+                    type: "info"
+                },
+                client
+            )
+
             removedCount = res.rowCount
         }
 
@@ -116,6 +125,15 @@ export const updateSupervisors = async (electionId, payload) => {
                 ON CONFLICT DO NOTHING
                 `,
                 [electionId, addIds]
+            )
+
+            await sendNotification(
+                addIds,
+                {
+                    message: "You have been added as a supervisor",
+                    type: "info"
+                },
+                client
             )
 
             addedCount = res.rowCount
