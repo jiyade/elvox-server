@@ -38,20 +38,25 @@ const DEV_ORIGINS = [
     /^http:\/\/192\.168\.\d+\.\d+:\d+$/
 ]
 
-const PROD_ORIGINS = ["https://elvox-app.vercel.app"]
+const PROD_ORIGINS = [
+    "https://elvox-app.vercel.app",
+    /^http:\/\/localhost:\d+$/
+]
+
+const isAllowed = (origin, list) =>
+    list.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin))
 
 app.use(
     cors({
         origin: (origin, callback) => {
             if (!origin) return callback(null, true)
 
-            if (
+            const allowed =
                 process.env.NODE_ENV === "production"
-                    ? PROD_ORIGINS.includes(origin)
-                    : DEV_ORIGINS.some((r) => r.test(origin))
-            ) {
-                return callback(null, true)
-            }
+                    ? isAllowed(origin, PROD_ORIGINS)
+                    : isAllowed(origin, DEV_ORIGINS)
+
+            if (allowed) return callback(null, true)
 
             callback(new Error("Not allowed by CORS"))
         },
