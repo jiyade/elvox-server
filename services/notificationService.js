@@ -37,8 +37,8 @@ export const registerDevice = async (data) => {
     if (!platform) throw new CustomError("Platform is required")
 
     const query = `
-        INSERT INTO push_notification_devices (user_id, device_id, push_token, platform)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO push_notification_devices (user_id, device_id, push_token, platform, updated_at)
+        VALUES ($1, $2, $3, $4, NOW())
         ON CONFLICT (device_id) 
         DO UPDATE SET 
             push_token = $3,
