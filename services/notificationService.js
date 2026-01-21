@@ -30,6 +30,10 @@ export const markNotificationRead = async (data) => {
 
 export const registerDevice = async (data) => {
     const { userId, deviceId, pushToken, platform } = data
+    if (!userId) throw new CustomError("User id is required")
+    if (!deviceId) throw new CustomError("Device id is required")
+    if (!pushToken) throw new CustomError("Push token is required")
+    if (!platform) throw new CustomError("Platform is required")
 
     const query = `
         INSERT INTO push_notification_devices (user_id, device_id, push_token, platform, updated_at)
