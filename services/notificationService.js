@@ -30,6 +30,7 @@ export const markNotificationRead = async (data) => {
 
 export const registerDevice = async (data) => {
     const { userId, deviceId, pushToken, platform } = data
+
     if (!userId) throw new CustomError("User id is required")
     if (!deviceId) throw new CustomError("Device id is required")
     if (!pushToken) throw new CustomError("Push token is required")

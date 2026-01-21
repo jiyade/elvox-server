@@ -52,7 +52,7 @@ export const advanceElectionStatus = async (client, electionId) => {
         electionId,
         {
             level: "info",
-            message: `Election status advanced by system sheduler for ${election.name}`
+            message: `Election status advanced by system scheduler for ${election.name}`
         },
         client
     )
