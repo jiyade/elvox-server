@@ -92,7 +92,7 @@ app.get("/healthz", async (req, res) => {
 })
 
 // REGISTER DEVICE FOR PUSH NOTIFICATION
-app.post("/devices/register", registerDevice)
+app.post("/notifications/devices/register", registerDevice)
 
 // WEB ROUTES
 app.use("/auth", authRouter)
