@@ -775,7 +775,7 @@ export const activateVotingSystem = async (id, data) => {
         const deviceToken = generateDeviceToken()
         const tokenHash = hashToken(deviceToken)
 
-        await client.query(
+        const insertRes = await client.query(
             `
             INSERT INTO voting_devices
             (election_id, device_id, device_name, auth_token_hash)
@@ -798,7 +798,9 @@ export const activateVotingSystem = async (id, data) => {
         return {
             ok: true,
             message: "System successfully activated",
-            deviceToken
+            deviceToken,
+            deviceId: data?.deviceId,
+            deviceName: data?.deviceName
         }
     } catch (err) {
         await client.query("ROLLBACK")

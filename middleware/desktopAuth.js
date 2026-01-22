@@ -16,18 +16,22 @@ const authMiddleware = async (req, res, next) => {
         const hashedToken = hashToken(token)
 
         const verifyRes = await pool.query(
-            "SELECT device_id, election_id FROM voting_devices WHERE auth_token_hash = $1 AND revoked_at IS NULL",
+            "SELECT device_id, device_name, election_id FROM voting_devices WHERE auth_token_hash = $1 AND revoked_at IS NULL",
             [hashedToken]
         )
 
         if (verifyRes.rowCount === 0)
             throw new CustomError("Authentication required", 401)
 
-        const { device_id: deviceId, election_id: electionId } =
-            verifyRes.rows[0]
+        const {
+            device_id: deviceId,
+            device_name: deviceName,
+            election_id: electionId
+        } = verifyRes.rows[0]
 
         req.device = {
             deviceId,
+            deviceName,
             electionId
         }
 
