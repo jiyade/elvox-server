@@ -772,23 +772,51 @@ export const activateVotingSystem = async (id, data) => {
 
         if (!isMatch) throw new CustomError("Invalid secret key", 401)
 
+        const existing = await client.query(
+            `
+            SELECT revoked_at
+            FROM voting_devices
+            WHERE election_id = $1 AND device_id = $2
+            FOR UPDATE
+            `,
+            [id, data.deviceId]
+        )
+
+        if (existing.rowCount > 0 && existing.rows[0].revoked_at) {
+            throw new CustomError(
+                "This voting system has been revoked by admin",
+                403,
+                "DEVICE_REVOKED"
+            )
+        }
+
         const deviceToken = generateDeviceToken()
         const tokenHash = hashToken(deviceToken)
 
-        await client.query(
+        const upsertRes = await client.query(
             `
             INSERT INTO voting_devices
-            (election_id, device_id, device_name, auth_token_hash)
-            VALUES ($1, $2, $3, $4)
+            (election_id, device_id, device_name, auth_token_hash, revoked_at)
+            VALUES ($1, $2, $3, $4, NULL)
+            ON CONFLICT (election_id, device_id)
+            DO UPDATE SET
+                auth_token_hash = EXCLUDED.auth_token_hash,
+                device_name = EXCLUDED.device_name,
+                revoked_at = NULL
+            RETURNING xmax = 0 AS inserted
             `,
-            [id, data?.deviceId, data?.deviceName, tokenHash]
+            [id, data.deviceId, data.deviceName, tokenHash]
         )
+
+        const wasInserted = upsertRes.rows[0].inserted
 
         await createLog(
             id,
             {
                 level: "info",
-                message: `Voting system "${data?.deviceName}" (id:${data?.deviceId}) is activated for election "${electionName}"`
+                message: wasInserted
+                    ? `Voting system "${data.deviceName}" activated for election "${electionName}"`
+                    : `Voting system "${data.deviceName}" re-activated (new token issued)`
             },
             client
         )
@@ -797,19 +825,13 @@ export const activateVotingSystem = async (id, data) => {
 
         return {
             ok: true,
-            message: "System successfully activated",
+            message: wasInserted
+                ? "System successfully activated"
+                : "System already activated. New token issued.",
             deviceToken
         }
     } catch (err) {
         await client.query("ROLLBACK")
-
-        // duplicate device activation
-        if (err.code === "23505") {
-            throw new CustomError(
-                "Voting system already activated for this election",
-                409
-            )
-        }
 
         throw err
     } finally {
