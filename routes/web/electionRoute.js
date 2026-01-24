@@ -11,7 +11,8 @@ import {
     updateReservedClasses,
     updateSupervisors,
     updateAutoPublishResults,
-    generateSecretKey
+    generateSecretKey,
+    streamEvents
 } from "../../controllers/electionController.js"
 import requireRole from "../../middleware/requireRole.js"
 import requirePassword from "../../middleware/requirePassword.js"
@@ -39,6 +40,11 @@ router.patch(
     updateAutoPublishResults
 )
 router.post("/:id/secret-key", requireRole(["admin"]), generateSecretKey)
+router.get(
+    "/:id/events/stream",
+    requireRole(["admin", "supervisor"]),
+    streamEvents
+)
 router.delete("/:id", requireRole(["admin"]), requirePassword, deleteElection)
 router.patch("/:id", requireRole(["admin"]), updateElection)
 router.get("/:id", getElectionDetails)

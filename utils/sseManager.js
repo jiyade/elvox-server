@@ -22,15 +22,22 @@ export const removeClient = (electionId, res) => {
     }
 }
 
-export const emitLog = (electionId, log) => {
+export const emitEvent = (electionId, payload) => {
     const clients = connections.get(electionId)
     if (!clients) return
 
     clients.forEach((client) => {
         try {
-            client.write(`data: ${JSON.stringify(log)}\n\n`)
+            client.write(`data: ${JSON.stringify(payload)}\n\n`)
         } catch (err) {
-            console.error("[emitLog] Write failed:", err)
+            console.error("[emitEvent] Write failed:", err)
         }
+    })
+}
+
+export const emitLog = (electionId, log) => {
+    emitEvent(electionId, {
+        type: "audit-log",
+        ...log
     })
 }

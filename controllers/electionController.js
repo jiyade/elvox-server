@@ -1,3 +1,6 @@
+import pool from "../db/db.js"
+import CustomError from "../utils/CustomError.js"
+import { addClient, removeClient } from "../utils/sseManager.js"
 import * as electionService from "../services/electionService.js"
 
 export const getElection = async (req, res, next) => {
@@ -152,4 +155,31 @@ export const activateVotingSystem = async (req, res, next) => {
     } catch (err) {
         next(err)
     }
+}
+
+export const streamEvents = async (req, res, next) => {
+    const electionId = req.params.id
+
+    try {
+        const electionRes = await pool.query(
+            "SELECT id FROM elections WHERE id = $1 LIMIT 1",
+            [electionId]
+        )
+
+        if (electionRes.rowCount === 0)
+            throw new CustomError("No election found with the given id", 404)
+    } catch (err) {
+        return next(err)
+    }
+
+    res.setHeader("Content-Type", "text/event-stream")
+    res.setHeader("Cache-Control", "no-cache")
+    res.setHeader("Connection", "keep-alive")
+    res.flushHeaders()
+
+    addClient(electionId, res)
+
+    req.on("close", () => {
+        removeClient(electionId, res)
+    })
 }
