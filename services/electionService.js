@@ -58,9 +58,12 @@ export const getAllElections = async () => {
     return res.rows
 }
 
-export const getSupervisors = async () => {
+export const getSupervisors = async (electionId) => {
+    if (!electionId) throw new CustomError("Election id is required", 400)
+
     const res = await pool.query(
-        "SELECT s.user_id AS id, s.name, s.empcode, t.profile_pic, t.department FROM supervisors s JOIN teachers t ON s.user_id = t.user_id"
+        "SELECT s.user_id AS id, s.name, s.empcode, t.profile_pic, t.department FROM supervisors s JOIN teachers t ON s.user_id = t.user_id WHERE election_id = $1",
+        [electionId]
     )
 
     return res.rows

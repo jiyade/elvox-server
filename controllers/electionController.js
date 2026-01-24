@@ -32,7 +32,7 @@ export const getAllElections = async (req, res, next) => {
 
 export const getSupervisors = async (req, res, next) => {
     try {
-        const supervisors = await electionService.getSupervisors()
+        const supervisors = await electionService.getSupervisors(req.params.id)
 
         return res.status(200).json(supervisors)
     } catch (err) {
