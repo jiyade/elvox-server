@@ -36,9 +36,10 @@ export const checkTeacherExists = async (data) => {
     return { exists: true }
 }
 
-export const getSupervisorEligibleTeachers = async () => {
+export const getSupervisorEligibleTeachers = async (electionId) => {
     const res = await pool.query(
-        "SELECT u.id, u.profile_pic, t.name, t.empcode, t.department FROM users u JOIN teachers t ON u.id = t.user_id WHERE u.role = 'teacher' AND NOT EXISTS (SELECT 1 FROM supervisors s WHERE s.user_id = u.id)"
+        "SELECT u.id, u.profile_pic, t.name, t.empcode, t.department FROM users u JOIN teachers t ON u.id = t.user_id WHERE u.role = 'teacher' AND NOT EXISTS (SELECT 1 FROM supervisors s WHERE s.user_id = u.id AND s.election_id = $1)",
+        [electionId]
     )
 
     return res.rows

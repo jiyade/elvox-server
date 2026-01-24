@@ -10,7 +10,7 @@ import authMiddleware from "../../middleware/auth.js"
 const router = Router()
 
 router.get(
-    "/supervisor-eligible",
+    "/supervisor-eligible/:electionId",
     authMiddleware,
     requireRole(["admin"]),
     getSupervisorEligibleTeachers

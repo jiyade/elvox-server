@@ -22,7 +22,9 @@ export const checkTeacherExists = async (req, res, next) => {
 
 export const getSupervisorEligibleTeachers = async (req, res, next) => {
     try {
-        const data = await teacherService.getSupervisorEligibleTeachers()
+        const data = await teacherService.getSupervisorEligibleTeachers(
+            req.params.electionId
+        )
 
         res.status(200).json(data)
     } catch (err) {
