@@ -1,10 +1,12 @@
 import crypto from "crypto"
+import jwt from "jsonwebtoken"
 import CustomError from "../utils/CustomError.js"
 import pool from "../db/db.js"
 import { checkStudentExists } from "./studentService.js"
 import { getElectionDetails } from "./electionService.js"
 import capitalize from "../utils/capitalize.js"
 import { createLog } from "./logService.js"
+import { emitEvent } from "../utils/sseManager.js"
 
 export const verifyVoter = async (user, data) => {
     const { admno, electionId } = data
@@ -75,7 +77,7 @@ export const verifyVoter = async (user, data) => {
                 level: "info",
                 message: `Voter verified for election "${
                     election.name
-                }" by ${capitalize(user.role)} ${user.name} (id: ${user.id})`
+                }" by ${capitalize(user?.effectiveRole ?? user.role)} ${user.name} (id: ${user.id})`
             },
             client
         )
@@ -91,6 +93,102 @@ export const verifyVoter = async (user, data) => {
         }
     } catch (err) {
         await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
+export const authenticateVoter = async (data) => {
+    const { admno, otp, electionId } = data
+
+    if (!admno) throw new CustomError("Admission number is required", 400)
+    if (!otp) throw new CustomError("OTP is required", 400)
+    if (!electionId) throw new CustomError("Election id is required", 400)
+
+    const election = await getElectionDetails(electionId)
+
+    if (election.status !== "voting")
+        throw new CustomError(
+            "Voting is unavailable. The election is not in the voting phase",
+            409
+        )
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const voterRes = await client.query(
+            "SELECT has_voted FROM voters WHERE admno = $1 AND election_id = $2",
+            [admno, electionId]
+        )
+
+        if (voterRes.rowCount === 0)
+            throw new CustomError("Voter record not found", 404)
+
+        if (voterRes.rows[0].has_voted)
+            throw new CustomError("You have already voted", 409)
+
+        const otpRes = await client.query(
+            "SELECT otp_hash, expires_at FROM otp_verifications WHERE admno = $1 AND election_id = $2 AND used_at IS NULL FOR UPDATE",
+            [admno, electionId]
+        )
+
+        if (otpRes.rowCount === 0) throw new CustomError("OTP not found", 404)
+
+        const { otp_hash, expires_at } = otpRes.rows[0]
+
+        if (new Date() > expires_at)
+            throw new CustomError("OTP has expired", 400)
+
+        const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex")
+
+        const isValid = crypto.timingSafeEqual(
+            Buffer.from(hashedOtp, "hex"),
+            Buffer.from(otp_hash, "hex")
+        )
+
+        if (!isValid) throw new CustomError("Invalid OTP", 400)
+
+        const votingToken = jwt.sign(
+            {
+                admno,
+                electionId,
+                deviceId: data.device.deviceId,
+                scope: "voting"
+            },
+            process.env.VOTING_TOKEN_SECRET,
+            { expiresIn: "2m" }
+        )
+
+        await client.query(
+            "UPDATE otp_verifications SET used_at = NOW() WHERE admno = $1 AND election_id = $2",
+            [admno, electionId]
+        )
+
+        await createLog(
+            election.id,
+            {
+                level: "info",
+                message: `Voter authenticated for election "${election.name}" from voting system "${data.device.deviceName}"`
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        emitEvent(electionId, {
+            type: "otp-used",
+            admno
+        })
+
+        return {
+            votingToken
+        }
+    } catch (err) {
+        await client.query("ROLLBACK")
+
         throw err
     } finally {
         client.release()

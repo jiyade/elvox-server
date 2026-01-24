@@ -3,12 +3,12 @@ import "dotenv/config"
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import pool from "./db/db.js"
+
+// MIDDLEWARE IMPORTS
 import errorHandler from "./middleware/errorHandler.js"
 import notFound from "./middleware/notFound.js"
 import authMiddleware from "./middleware/auth.js"
-import requireRole from "./middleware/requireRole.js"
-
-import { registerDevice } from "./controllers/notificationController.js"
+import desktopAuthMiddleware from "./middleware/desktopAuth.js"
 
 // WEB ROUTERS IMPORT
 import authRouter from "./routes/web/authRoute.js"
@@ -22,11 +22,13 @@ import notificationRouter from "./routes/web/notificationRoute.js"
 import appealRouter from "./routes/web/appealRoute.js"
 import resultRouter from "./routes/web/resultRoute.js"
 import voterRouter from "./routes/web/voterRoute.js"
-import logRouter from "./routes/web/logRoute.js"
 
 // DESKTOP ROUTERS IMPORT
 import desktopElectionRouter from "./routes/desktop/electionRoute.js"
 import desktopAuthRouter from "./routes/desktop/authRoute.js"
+import desktopVoterRouter from "./routes/desktop/voterRoute.js"
+
+import { registerDevice } from "./controllers/notificationController.js"
 
 import "./jobs/index.js"
 
@@ -106,11 +108,11 @@ app.use("/notifications", authMiddleware, notificationRouter)
 app.use("/appeals", authMiddleware, appealRouter)
 app.use("/results", authMiddleware, resultRouter)
 app.use("/voters", authMiddleware, voterRouter)
-app.use("/elections", authMiddleware, requireRole(["admin"]), logRouter)
 
 // DESKTOP ROUTES
 app.use("/desktop/verify", desktopAuthRouter)
 app.use("/desktop/elections", desktopElectionRouter)
+app.use("/desktop/voters", desktopAuthMiddleware, desktopVoterRouter)
 
 app.use(notFound)
 app.use(errorHandler)
