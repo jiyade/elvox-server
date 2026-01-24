@@ -107,6 +107,10 @@ export const createAppeal = async (data) => {
         await client.query("COMMIT")
 
         return { message: "Appeal submitted", data: res.rows[0] }
+    } catch (err) {
+        await client.query("ROLLBACK")
+
+        throw err
     } finally {
         client.release()
     }
