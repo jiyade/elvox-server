@@ -74,8 +74,7 @@ export const advanceElectionStatus = async (client, electionId) => {
             FROM candidates c
             WHERE c.election_id = $1
             AND c.status = 'approved'
-            ON CONFLICT ON CONSTRAINT uniq_candidate_per_ballot
-            DO NOTHING
+            ON CONFLICT DO NOTHING
             `,
             [electionId]
         )
@@ -90,8 +89,7 @@ export const advanceElectionStatus = async (client, electionId) => {
                 NULL,
                 true
             FROM classes c
-            ON CONFLICT ON CONSTRAINT uniq_nota_per_ballot
-            DO NOTHING
+            ON CONFLICT DO NOTHING
             `,
             [electionId]
         )
