@@ -27,6 +27,7 @@ import voterRouter from "./routes/web/voterRoute.js"
 import desktopElectionRouter from "./routes/desktop/electionRoute.js"
 import desktopAuthRouter from "./routes/desktop/authRoute.js"
 import desktopVoterRouter from "./routes/desktop/voterRoute.js"
+import desktopCandidateRouter from "./routes/desktop/candidateRoute.js"
 
 import { registerDevice } from "./controllers/notificationController.js"
 
@@ -113,7 +114,9 @@ app.use("/voters", authMiddleware, voterRouter)
 app.use("/desktop/verify", desktopAuthRouter)
 app.use("/desktop/elections", desktopElectionRouter)
 app.use("/desktop/voters", desktopAuthMiddleware, desktopVoterRouter)
+app.use("/desktop/candidates", desktopAuthMiddleware, desktopCandidateRouter)
 
+// ERROR HANDLING MIDDLEWARE
 app.use(notFound)
 app.use(errorHandler)
 

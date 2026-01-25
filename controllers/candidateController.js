@@ -66,6 +66,19 @@ export const getCandidates = async (req, res, next) => {
     }
 }
 
+export const getBallotEntries = async (req, res, next) => {
+    try {
+        const data = await candidateService.getBallotEntries(
+            req.query.class,
+            req.query.election
+        )
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
 export const withdrawCandidate = async (req, res, next) => {
     try {
         const data = await candidateService.withdrawCandidate({

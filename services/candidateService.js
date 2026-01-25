@@ -344,6 +344,18 @@ export const getCandidates = async (data) => {
     return candidates
 }
 
+export const getBallotEntries = async (classId, electionId) => {
+    if (!classId) throw new CustomError("Class ID is required", 400)
+    if (!electionId) throw new CustomError("Election ID is required", 400)
+
+    const res = await pool.query(
+        "SELECT be.id AS ballot_entry_id, c.id, c.name, c.profile_pic, c.class, c.semester, be.is_nota FROM ballot_entries be LEFT JOIN candidates c ON c.id = be.candidate_id WHERE be.election_id = $1 AND be.class_id = $2 ORDER BY be.is_nota ASC, c.name ASC",
+        [electionId, classId]
+    )
+
+    return res.rows
+}
+
 export const withdrawCandidate = async (data) => {
     const { id, election_id } = data
 
