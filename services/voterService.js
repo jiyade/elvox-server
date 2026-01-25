@@ -151,6 +151,16 @@ export const authenticateVoter = async (data) => {
 
         if (!isValid) throw new CustomError("Invalid OTP", 400)
 
+        const classRes = await client.query(
+            "SELECT class_id FROM students WHERE admno = $1",
+            [admno]
+        )
+
+        if (classRes.rowCount === 0)
+            throw new CustomError("Student record not found", 404)
+
+        const classId = classRes.rows[0].class_id
+
         const votingToken = jwt.sign(
             {
                 admno,
@@ -175,6 +185,7 @@ export const authenticateVoter = async (data) => {
         })
 
         return {
+            classId,
             votingToken
         }
     } catch (err) {
