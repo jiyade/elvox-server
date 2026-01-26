@@ -65,11 +65,12 @@ export const advanceElectionStatus = async (client, electionId) => {
         // 1. insert candidate entries
         await client.query(
             `
-             INSERT INTO ballot_entries (election_id, class_id, candidate_id, is_nota)
+             INSERT INTO ballot_entries (election_id, class_id, candidate_id, category, is_nota)
             SELECT
                 c.election_id,
                 c.class_id,
                 c.id,
+                c.category
                 false
             FROM candidates c
             WHERE c.election_id = $1
@@ -82,13 +83,17 @@ export const advanceElectionStatus = async (client, electionId) => {
         // 2. insert NOTA per class
         await client.query(
             `
-            INSERT INTO ballot_entries (election_id, class_id, candidate_id, is_nota)
+            INSERT INTO ballot_entries (election_id, class_id, candidate_id, category, is_nota)
             SELECT
                 $1,
                 c.id,
                 NULL,
+                cat.category,
                 true
             FROM classes c
+            CROSS JOIN (
+                SELECT unnest(ARRAY['general', 'reserved']) AS category
+            ) cat
             ON CONFLICT DO NOTHING
             `,
             [electionId]
