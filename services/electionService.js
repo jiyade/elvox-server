@@ -9,7 +9,7 @@ import { createLog } from "./logService.js"
 
 export const getElection = async (role) => {
     const res = await pool.query(
-        "SELECT * FROM elections WHERE status != 'closed' ORDER BY election_start DESC LIMIT 1"
+        "SELECT * FROM elections WHERE status != 'closed' LIMIT 1"
     )
 
     if (res.rowCount === 0) return null
@@ -225,6 +225,20 @@ export const createElection = async (user, data) => {
 
     try {
         await client.query("BEGIN")
+
+        const { rowCount } = await client.query(
+            `
+            SELECT 1
+            FROM elections
+            WHERE status != 'closed'
+            LIMIT 1
+            FOR UPDATE
+            `
+        )
+
+        if (rowCount > 0) {
+            throw new CustomError("An active election already exists", 409)
+        }
 
         const res = await client.query(
             "INSERT INTO elections (name, election_start, election_end, nomination_start, nomination_end, voting_start, voting_end) VALUES ($1, NOW(), $2, $3, $4, $5, $6) RETURNING *",
