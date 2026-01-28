@@ -74,24 +74,11 @@ app.get("/", (req, res) => {
     res.status(200).send("Server is running!")
 })
 
-app.get("/healthz", async (req, res) => {
-    try {
-        const { rows } = await pool.query("SELECT NOW()")
-
-        res.status(200).json({
-            ok: true,
-            message: "API and DB healthy",
-            time: rows[0].now
-        })
-    } catch (err) {
-        console.error("Health check failed:", err.message)
-        console.log(err)
-
-        res.status(500).json({
-            ok: false,
-            message: "DB connection failed"
-        })
-    }
+app.get("/healthz", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    message: "API healthy"
+  })
 })
 
 // REGISTER DEVICE FOR PUSH NOTIFICATION
