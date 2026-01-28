@@ -35,15 +35,12 @@ export const createLog = async (electionId, data, client = null) => {
     const executor = client ?? pool
 
     const electionRes = await executor.query(
-        "SELECT status FROM elections WHERE id = $1 LIMIT 1",
+        "SELECT 1 FROM elections WHERE id = $1 LIMIT 1",
         [electionId]
     )
 
     if (electionRes.rowCount === 0)
         throw new CustomError("No election found with the given id", 404)
-
-    if (electionRes.rows[0].status === "closed")
-        throw new CustomError("Logs cannot be created at this state", 409)
 
     const logRes = await executor.query(
         "INSERT INTO logs (election_id, level, message) VALUES ($1, $2, $3) RETURNING *",
