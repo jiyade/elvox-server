@@ -20,10 +20,11 @@ export const getReults = async (electionId, queries) => {
             r.rank,
             c.id AS candidate_id,
             c.name,
-            c.class,
-            c.semester
+            cl.name AS class,
+            cl.year
         FROM results r
         LEFT JOIN candidates c ON c.id = r.candidate_id
+        JOIN classes cl ON cl.id = r.class_id
         JOIN elections e ON e.id = r.election_id
         WHERE r.election_id = $1
             AND e.result_published = TRUE
@@ -37,24 +38,24 @@ export const getReults = async (electionId, queries) => {
 
     // OPTIONAL CLASS FILTER
     if (className && className !== "all") {
-        query += ` AND LOWER(c.class) = LOWER($${idx++})`
+        query += ` AND LOWER(cl.name) = LOWER($${idx++})`
         values.push(className)
     }
 
     // OPTIONAL YEAR FILTER (MAPPED TO SEMESTERS)
     if (year && year !== "all") {
         const yearMap = {
-            first: [1, 2],
-            second: [3, 4],
-            third: [5, 6],
-            fourth: [7, 8]
+            first: 1,
+            second: 2,
+            third: 3,
+            fourth: 4
         }
 
-        query += ` AND c.semester = ANY($${idx++})`
+        query += ` AND cl.year = $${idx++}`
         values.push(yearMap[year])
     }
 
-    query += ` ORDER BY r.class_id, c.semester, r.rank ASC`
+    query += ` ORDER BY r.class_id, cl.year, r.rank ASC`
 
     const { rows } = await pool.query(query, values)
 
@@ -62,13 +63,13 @@ export const getReults = async (electionId, queries) => {
     const grouped = {}
 
     rows.forEach((r) => {
-        const key = `${r.class_id}-${r.semester}`
+        const key = r.class_id
 
         if (!grouped[key]) {
             grouped[key] = {
                 classId: r.class_id,
                 class: r.class,
-                semester: r.semester,
+                year: r.year,
                 results: {
                     general: {
                         totalVotes: 0,
