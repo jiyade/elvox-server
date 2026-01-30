@@ -54,7 +54,7 @@ export const getReults = async (electionId, queries) => {
         values.push(yearMap[year])
     }
 
-    query += ` ORDER BY r.class_id, c.semester, r.total_votes DESC`
+    query += ` ORDER BY r.class_id, c.semester, r.rank ASC`
 
     const { rows } = await pool.query(query, values)
 
@@ -69,15 +69,20 @@ export const getReults = async (electionId, queries) => {
                 classId: r.class_id,
                 class: r.class,
                 semester: r.semester,
-                totalVotes: 0,
                 results: {
-                    general: [],
-                    reserved: []
+                    general: {
+                        totalVotes: 0,
+                        candidates: []
+                    },
+                    reserved: {
+                        totalVotes: 0,
+                        candidates: []
+                    }
                 }
             }
         }
 
-        grouped[key].results[r.category].push({
+        grouped[key].results[r.category].candidates.push({
             id: r.candidate_id,
             name: r.is_nota ? "NOTA" : r.name,
             isNota: r.is_nota,
@@ -87,16 +92,17 @@ export const getReults = async (electionId, queries) => {
             lead: null
         })
 
-        grouped[key].totalVotes += r.total_votes
+        grouped[key].results[r.category].totalVotes += r.total_votes
     })
 
     // SORT CANDIDATES AND COMPUTE LEAD
     Object.values(grouped).forEach((group) => {
         ;["general", "reserved"].forEach((category) => {
-            const arr = group.results[category]
+            const arr = group.results[category].candidates
+
             if (!arr.length) return
 
-            arr.sort((a, b) => b.votes - a.votes)
+            arr.sort((a, b) => a.rank - b.rank)
 
             const topVotes = arr[0].votes
             const secondVotes = arr[1]?.votes ?? topVotes
