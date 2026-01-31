@@ -107,7 +107,7 @@ export const advanceElectionStatus = async (client, electionId) => {
             electionId,
             {
                 level: "info",
-                message: `Candidate entries have been created for election "${election.name}" by system`
+                message: `Ballot entries have been created for election "${election.name}" by system`
             },
             client
         )
