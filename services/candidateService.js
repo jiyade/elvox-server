@@ -265,7 +265,7 @@ export const getCandidate = async (data) => {
 export const getCandidates = async (data) => {
     const {
         query: { status },
-        user: { tutor_of, role }
+        user: { role }
     } = data
 
     if (!status) throw new CustomError("Status is required", 400)
@@ -293,17 +293,31 @@ export const getCandidates = async (data) => {
         return res.rows
     }
 
-    let candidates
-
-    if (status === "pending") {
-        if (role === "student") throw new CustomError("Forbidden", 403)
-        if (!tutor_of)
-            throw new CustomError(
-                "You must need to be a tutor to access pending candidate applications",
-                403
-            )
+    if (status === "approved") {
         const res = await pool.query(
-            `
+            "SELECT name, id, election_id, category, department, class, semester, profile_pic, status, actioned_by, updated_at, created_at FROM candidates WHERE status = $1 AND election_id IN ( SELECT id FROM elections WHERE status != 'closed')",
+            [status]
+        )
+
+        return res.rows
+    } else {
+        throw new CustomError("Invalid status", 400)
+    }
+}
+
+export const getPendingCandidates = async (user) => {
+    const { tutor_of, role } = user
+
+    if (role === "student") throw new CustomError("Forbidden", 403)
+
+    if (!tutor_of)
+        throw new CustomError(
+            "You must need to be a tutor to access pending candidate applications",
+            403
+        )
+
+    const res = await pool.query(
+        `
             SELECT
                 c.name,
                 c.id,
@@ -325,26 +339,14 @@ export const getCandidates = async (data) => {
                 s.admno
             FROM candidates c
             JOIN students s ON s.user_id = c.user_id
-            WHERE c.status = $1 
-                AND c.class_id = $2 
+            WHERE c.status = 'pending'
+                AND c.class_id = $1
                 AND c.election_id IN (SELECT id FROM elections WHERE status = 'nominations')
             `,
-            [status, tutor_of]
-        )
+        [tutor_of]
+    )
 
-        candidates = res.rows
-    } else if (status === "approved") {
-        const res = await pool.query(
-            "SELECT name, id, election_id, category, department, class, semester, profile_pic, status, actioned_by, updated_at, created_at FROM candidates WHERE status = $1 AND election_id IN ( SELECT id FROM elections WHERE status != 'closed')",
-            [status]
-        )
-
-        candidates = res.rows
-    } else {
-        throw new CustomError("Invalid status", 400)
-    }
-
-    return candidates
+    return res.rows
 }
 
 export const getBallotEntries = async (classId, electionId) => {

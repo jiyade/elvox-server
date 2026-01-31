@@ -8,7 +8,8 @@ import {
     getCandidates,
     getMyCandidate,
     withdrawCandidate,
-    reviewCandidate
+    reviewCandidate,
+    getPendingCandidates
 } from "../../controllers/candidateController.js"
 import upload from "../../middleware/upload.js"
 
@@ -25,6 +26,7 @@ router.post(
     createCandidate
 )
 router.get("/", getCandidates)
+router.get("/pending", requireRole(["tutor"]), getPendingCandidates)
 router.get("/me", requireRole(["student"]), getMyCandidate)
 router.patch(
     "/:id/withdraw",

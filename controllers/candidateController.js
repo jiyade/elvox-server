@@ -66,6 +66,16 @@ export const getCandidates = async (req, res, next) => {
     }
 }
 
+export const getPendingCandidates = async (req, res, next) => {
+    try {
+        const data = await candidateService.getPendingCandidates(req?.user)
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
 export const getBallotEntries = async (req, res, next) => {
     try {
         const data = await candidateService.getBallotEntries(
