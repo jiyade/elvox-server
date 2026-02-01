@@ -1,12 +1,25 @@
 import CustomError from "../utils/CustomError.js"
 import capitalize from "../utils/capitalize.js"
+import escapeCsvValue from "../utils/escapeCsvValue.js"
 import buildGetResultsQuery from "../utils/buildGetResultsQuery.js"
 import pool from "../db/db.js"
 import { createLog } from "./logService.js"
 import { sendNotification } from "./notificationService.js"
+import PDFDocument from "pdfkit"
 
 export const getReults = async (electionId, queries) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
+
+    const electionRes = await pool.query(
+        "SELECT result_published FROM elections WHERE id = $1",
+        [electionId]
+    )
+
+    if (electionRes.rowCount === 0)
+        throw new CustomError("No election found", 404)
+
+    if (!electionRes.rows[0].result_published)
+        throw new CustomError("Result not published for this election", 403)
 
     const { query, values } = buildGetResultsQuery(electionId, queries)
 
@@ -192,5 +205,182 @@ export const publishResults = async (electionId, user) => {
         throw err
     } finally {
         client.release()
+    }
+}
+
+export const exportResults = async (electionId, queries, res) => {
+    if (!electionId) throw new CustomError("Election id is required")
+
+    const { format } = queries
+
+    if (!format) throw new CustomError("Export format is required")
+
+    const electionRes = await pool.query(
+        "SELECT name, result_published FROM elections WHERE id = $1",
+        [electionId]
+    )
+
+    if (electionRes.rowCount === 0)
+        throw new CustomError("No election found", 404)
+
+    if (!electionRes.rows[0].result_published)
+        throw new CustomError("Result not published for this election", 403)
+
+    const electionName = electionRes.rows[0].name
+
+    const { query, values } = buildGetResultsQuery(electionId, queries, true)
+
+    const { rows } = await pool.query(query, values)
+
+    const fileName = electionName.replace(/[^a-z0-9]/gi, "_").toLowerCase()
+
+    if (format === "csv") {
+        res.setHeader("Content-Type", "text/csv; charset=utf-8")
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${fileName}_results.csv"`
+        )
+
+        // title
+        res.write(`"${escapeCsvValue(electionName)} Results"\n\n`)
+
+        // header row
+        res.write("Name,Class,Year,Category,Votes,Rank,Status\n")
+
+        if (!rows.length) {
+            return res.end()
+        }
+
+        // data rows
+        for (const r of rows) {
+            const category =
+                r.category.charAt(0).toUpperCase() + r.category.slice(1)
+
+            const status = r.result_status.toUpperCase()
+
+            const name = r.is_nota ? "NOTA" : r.name
+
+            res.write(
+                `"${escapeCsvValue(name)}","${escapeCsvValue(r.class)}",${r.year},"${escapeCsvValue(category)}",${r.total_votes},${r.rank},"${escapeCsvValue(status)}"\n`
+            )
+        }
+
+        res.end()
+        return
+    } else if (format === "pdf") {
+        const doc = new PDFDocument({ margin: 40, bufferPages: true })
+
+        res.setHeader("Content-Type", "application/pdf")
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${fileName}_results.pdf"`
+        )
+
+        doc.pipe(res)
+
+        const startX = 40
+        let y = doc.y
+
+        const rowHeight = 22
+        const titleHeight = 28
+        const columns = [
+            { key: "name", label: "Name", width: 110, align: "left" },
+            { key: "class", label: "Class", width: 130, align: "left" },
+            { key: "year", label: "Year", width: 40, align: "center" },
+            { key: "category", label: "Category", width: 70, align: "left" },
+            { key: "votes", label: "Votes", width: 50, align: "center" },
+            { key: "rank", label: "Rank", width: 40, align: "center" },
+            { key: "status", label: "Status", width: 60, align: "center" }
+        ]
+
+        const tableWidth = columns.reduce((s, c) => s + c.width, 0)
+
+        // title
+        doc.rect(startX, y, tableWidth, titleHeight).stroke()
+        doc.fontSize(14)
+            .font("Helvetica-Bold")
+            .text(`${electionName} Results`, startX, y + 9, {
+                width: tableWidth,
+                align: "center"
+            })
+
+        y += titleHeight
+
+        // headers
+        doc.fontSize(10).font("Helvetica-Bold")
+
+        let x = startX
+        for (const col of columns) {
+            doc.rect(x, y, col.width, rowHeight).stroke()
+            doc.text(col.label, x, y + 6, {
+                width: col.width,
+                align: "center"
+            })
+            x += col.width
+        }
+
+        y += rowHeight
+        doc.font("Helvetica")
+
+        // rows
+        for (const r of rows) {
+            const row = {
+                name: r.is_nota ? "NOTA" : r.name,
+                class: r.class,
+                year: r.year,
+                category:
+                    r.category.charAt(0).toUpperCase() + r.category.slice(1),
+                votes: r.total_votes,
+                rank: r.rank,
+                status: r.result_status.toUpperCase()
+            }
+
+            let x = startX
+            for (const col of columns) {
+                doc.rect(x, y, col.width, rowHeight).stroke()
+                doc.text(String(row[col.key]), x + 4, y + 6, {
+                    width: col.width - 8,
+                    align: col.align
+                })
+                x += col.width
+            }
+
+            y += rowHeight
+
+            // page break
+            if (y > doc.page.height - 50) {
+                doc.addPage()
+                y = 40
+            }
+        }
+
+        // footer
+        const range = doc.bufferedPageRange()
+        const totalPages = range.count
+
+        for (let i = range.start; i < range.start + totalPages; i++) {
+            doc.switchToPage(i)
+
+            const { width, height, margins } = doc.page
+            const footerY = height - margins.bottom + 10
+
+            doc.fontSize(10).font("Helvetica")
+
+            doc.text(`Page ${i + 1} of ${totalPages}`, margins.left, footerY, {
+                lineBreak: false
+            })
+
+            const nameWidth = doc.widthOfString(electionName)
+            const electionX = width - margins.right - nameWidth
+
+            doc.text(electionName, electionX, footerY, {
+                lineBreak: false
+            })
+        }
+
+        doc.end()
+        return
+    } else {
+        throw new CustomError("Invalid export format", 400)
     }
 }

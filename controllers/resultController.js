@@ -12,6 +12,7 @@ export const getResults = async (req, res, next) => {
         next(err)
     }
 }
+
 export const getRandomCandidatesResults = async (req, res, next) => {
     try {
         const data = await resultService.getRandomCandidatesResults(
@@ -32,6 +33,14 @@ export const publishResults = async (req, res, next) => {
         )
 
         res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
+export const exportResults = async (req, res, next) => {
+    try {
+        await resultService.exportResults(req.params.electionId, req.query, res)
     } catch (err) {
         next(err)
     }
