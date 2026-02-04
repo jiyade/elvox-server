@@ -119,12 +119,13 @@ export const resolveTieBreaker = async (electionId, classId, data, user) => {
             FROM results
             WHERE election_id = $1
                 AND category = $2
+                AND class_id = $3
                 AND rank > 1
             ORDER BY rank ASC
             LIMIT 1
             FOR UPDATE
             `,
-            [electionId, category]
+            [electionId, category, classId]
         )
 
         const firstLostRank = firstLostRes.rowCount
