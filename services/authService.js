@@ -150,26 +150,12 @@ export const verifyOtpForgotPassword = async (data) => {
         throw new CustomError("Email is required", 400)
 
     const res = await pool.query(`SELECT * FROM users WHERE ${type} = $1`, [
-        data[otpMethod]
+        data[otpMethod].toLowerCase().trim()
     ])
 
     if (res.rowCount === 0) throw new CustomError("User does not exist", 404)
 
     const user = res.rows[0]
-
-    // ONLY FOR TESTING ONLY, MUST REMOVE IN PROD
-    if (data.otp === "123456") {
-        const passwordResetToken = jwt.sign(
-            {
-                id: user.id,
-                purpose: "password_reset"
-            },
-            process.env.PASSWORD_CHANGE_SECRET,
-            { expiresIn: "5m" }
-        )
-        return { message: "OTP verified", passwordResetToken }
-    }
-    // ----------------------------------------
 
     const record = otps.get(data[otpMethod])
 
