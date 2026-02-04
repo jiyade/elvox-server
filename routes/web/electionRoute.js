@@ -16,6 +16,10 @@ import {
 } from "../../controllers/electionController.js"
 import { getLogs } from "../../controllers/logController.js"
 import { publishResults } from "../../controllers/resultController.js"
+import {
+    getClassTieBreakerStatus,
+    resolveTieBreaker
+} from "../../controllers/tieBreakerController.js"
 import requireRole from "../../middleware/requireRole.js"
 import requirePassword from "../../middleware/requirePassword.js"
 import resolveEffectiveRole from "../../middleware/resolveEffectiveRole.js"
@@ -61,6 +65,18 @@ router.get(
     resolveEffectiveRole,
     requireRole(["admin", "supervisor"]),
     streamEvents
+)
+
+router.get(
+    "/:id/classes/:classId/tie-breaker",
+    requireRole(["tutor"]),
+    getClassTieBreakerStatus
+)
+
+router.post(
+    "/:id/classes/:classId/tie-breaker/resolve",
+    requireRole(["tutor"]),
+    resolveTieBreaker
 )
 
 router.delete("/:id", requireRole(["admin"]), requirePassword, deleteElection)
