@@ -179,7 +179,7 @@ export const resolveTieBreaker = async (electionId, classId, data, user) => {
         }
 
         const usersRes = await client.query(
-            "SELECT user_id FROM students WHERE class_id = $1",
+            "SELECT user_id FROM students WHERE class_id = $1 AND user_id IS NOT NULL",
             [classId]
         )
 
