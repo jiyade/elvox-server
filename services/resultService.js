@@ -56,7 +56,8 @@ export const getReults = async (electionId, queries) => {
             votes: r.total_votes,
             status: r.result_status.toUpperCase(),
             rank: r.rank,
-            lead: null
+            lead: null,
+            hadTie: r.had_tie
         })
 
         grouped[key].results[r.category].totalVotes += r.total_votes

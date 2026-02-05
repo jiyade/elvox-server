@@ -13,6 +13,7 @@ const buildGetResultsQuery = (electionId, queries, forExport = false) => {
             r.is_nota,
             r.class_id,
             r.rank,
+            r.had_tie,
             c.id AS candidate_id,
             c.name,
             cl.name AS class,
