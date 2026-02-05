@@ -888,3 +888,81 @@ export const activateVotingSystem = async (id, data) => {
         client.release()
     }
 }
+
+export const getActivatedVotingSystems = async (id) => {
+    if (!id) throw new CustomError("Election id is required", 400)
+
+    const res = await pool.query(
+        "SELECT id, device_name, activated_at, device_id FROM voting_devices WHERE election_id = $1 AND revoked_at IS NULL",
+        [id]
+    )
+
+    if (res.rowCount === 0)
+        throw new CustomError("No activated systems found", 404)
+
+    return res.rows
+}
+
+export const revokeActivatedVotingSystem = async (
+    electionId,
+    deviceId,
+    user
+) => {
+    if (!electionId) throw new CustomError("Election id is required", 400)
+    if (!deviceId) throw new CustomError("Device id is required", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const electionRes = await client.query(
+            "SELECT name, status FROM elections WHERE id = $1",
+            [electionId]
+        )
+
+        if (electionRes.rowCount === 0)
+            throw new CustomError("Election not found", 404)
+
+        if (!["pre-voting", "voting"].includes(electionRes.rows[0].status))
+            throw new CustomError(
+                "System cannot be revoked in the current election state",
+                409
+            )
+
+        const deviceRes = await client.query(
+            "SELECT device_name, revoked_at FROM voting_devices WHERE id = $1 FOR UPDATE",
+            [deviceId]
+        )
+
+        if (deviceRes.rowCount === 0)
+            throw new CustomError("System not found", 404)
+
+        if (deviceRes.rows[0].revoked_at)
+            throw new CustomError("System already revoked", 409)
+
+        await client.query(
+            "UPDATE voting_devices SET revoked_at = NOW() WHERE id = $1",
+            [deviceId]
+        )
+
+        await createLog(
+            electionId,
+            {
+                level: "warning",
+                message: `Voting system "${deviceRes.rows[0].device_name}" was revoked by ${capitalize(user?.role)} ${user?.name} for election "${electionRes.rows[0].name}"`
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        return { ok: true }
+    } catch (err) {
+        await client.query("ROLLBACK")
+
+        throw err
+    } finally {
+        client.release()
+    }
+}

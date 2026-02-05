@@ -157,6 +157,32 @@ export const activateVotingSystem = async (req, res, next) => {
     }
 }
 
+export const getActivatedVotingSystems = async (req, res, next) => {
+    try {
+        const data = await electionService.getActivatedVotingSystems(
+            req.params.id
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
+export const revokeActivatedVotingSystem = async (req, res, next) => {
+    try {
+        const data = await electionService.revokeActivatedVotingSystem(
+            req.params.id,
+            req.params.deviceId,
+            req?.user
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
 export const streamEvents = async (req, res, next) => {
     const electionId = req.params.id
 

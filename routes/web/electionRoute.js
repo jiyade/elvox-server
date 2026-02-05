@@ -12,6 +12,8 @@ import {
     updateSupervisors,
     updateAutoPublishResults,
     generateSecretKey,
+    getActivatedVotingSystems,
+    revokeActivatedVotingSystem,
     streamEvents
 } from "../../controllers/electionController.js"
 import { getLogs } from "../../controllers/logController.js"
@@ -59,6 +61,19 @@ router.patch("/:id/publish-result", requireRole(["admin"]), publishResults)
 router.post("/:id/secret-key", requireRole(["admin"]), generateSecretKey)
 
 router.get("/:id/logs", requireRole(["admin"]), getLogs)
+
+router.get(
+    "/:id/activated-systems",
+    requireRole(["admin"]),
+    getActivatedVotingSystems
+)
+
+router.patch(
+    "/:id/activated-systems/:deviceId/revoke",
+    requireRole(["admin"]),
+    requirePassword,
+    revokeActivatedVotingSystem
+)
 
 router.get(
     "/:id/events/stream",
