@@ -465,6 +465,21 @@ export const updateElection = async (user, electionId, data) => {
                 )
         }
         if (electionRes.rows[0].status === "nominations") {
+            if (updated.nomination_end <= now)
+                throw new CustomError(
+                    "Nomination end must be in the future",
+                    400
+                )
+
+            if (updated.voting_start <= now)
+                throw new CustomError("Voting start must be in the future", 400)
+
+            if (updated.voting_end <= now)
+                throw new CustomError("Voting end must be in the future", 400)
+
+            if (updated.election_end <= now)
+                throw new CustomError("Election end must be in the future", 400)
+
             if (updated.nomination_start >= updated.nomination_end)
                 throw new CustomError("Nomination end must be after start", 400)
 
@@ -484,6 +499,15 @@ export const updateElection = async (user, electionId, data) => {
                 )
         }
         if (electionRes.rows[0].status === "pre-voting") {
+            if (updated.voting_start <= now)
+                throw new CustomError("Voting start must be in the future", 400)
+
+            if (updated.voting_end <= now)
+                throw new CustomError("Voting end must be in the future", 400)
+
+            if (updated.election_end <= now)
+                throw new CustomError("Election end must be in the future", 400)
+
             if (updated.nomination_end >= updated.voting_start)
                 throw new CustomError(
                     "Voting must start after nominations",
@@ -500,6 +524,12 @@ export const updateElection = async (user, electionId, data) => {
                 )
         }
         if (electionRes.rows[0].status === "voting") {
+            if (updated.voting_end <= now)
+                throw new CustomError("Voting end must be in the future", 400)
+
+            if (updated.election_end <= now)
+                throw new CustomError("Election end must be in the future", 400)
+
             if (updated.voting_start >= updated.voting_end)
                 throw new CustomError("Voting end must be after start", 400)
 
@@ -510,6 +540,9 @@ export const updateElection = async (user, electionId, data) => {
                 )
         }
         if (electionRes.rows[0].status === "post-voting") {
+            if (updated.election_end <= now)
+                throw new CustomError("Election end must be in the future", 400)
+
             if (updated.voting_end >= updated.election_end)
                 throw new CustomError(
                     "Election end must be after voting ends",
