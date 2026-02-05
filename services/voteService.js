@@ -159,7 +159,7 @@ export const countVotes = async (electionId, client = null) => {
         throw new Error("Votes can only be counted on post-voting state")
 
     // Aggregate votes per (class, category, candidate, NOTA) by joining votes with ballot entries
-    // Upsert totals into results so recounts are safe; default status = 'lost'
+    // Upsert totals into results, default status = 'lost'
     await client.query(
         `
         INSERT INTO results (
@@ -235,12 +235,18 @@ export const countVotes = async (electionId, client = null) => {
             GROUP BY election_id, class_id, category
         )
         UPDATE results r
-        SET result_status =
-            CASE
-                WHEN r.rank = 1 AND fr.first_count = 1 THEN 'won'
-                WHEN r.rank = 1 AND fr.first_count > 1 THEN 'tie'
-                ELSE 'lost'
-            END
+        SET 
+            result_status =
+                CASE
+                    WHEN r.rank = 1 AND fr.first_count = 1 THEN 'won'
+                    WHEN r.rank = 1 AND fr.first_count > 1 THEN 'tie'
+                    ELSE 'lost'
+                END,
+            had_tie =
+                CASE
+                    WHEN r.rank = 1 AND fr.first_count > 1 THEN true
+                    ELSE r.had_tie
+                END
         FROM first_rank fr
         WHERE r.election_id = fr.election_id
         AND r.class_id = fr.class_id
