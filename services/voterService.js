@@ -6,7 +6,7 @@ import { checkStudentExists } from "./studentService.js"
 import { getElectionDetails } from "./electionService.js"
 import capitalize from "../utils/capitalize.js"
 import { createLog } from "./logService.js"
-import { emitEvent } from "../utils/sseManager.js"
+import { emitOtpUsed } from "../utils/sseManager.js"
 
 export const verifyVoter = async (user, data) => {
     const { admno, electionId } = data
@@ -179,8 +179,7 @@ export const authenticateVoter = async (data) => {
 
         await client.query("COMMIT")
 
-        emitEvent(electionId, {
-            type: "otp-used",
+        emitOtpUsed(electionId, {
             admno
         })
 

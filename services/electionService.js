@@ -6,6 +6,7 @@ import { hashSecretKey, verifySecretKey } from "../utils/hashSecretKey.js"
 import { generateDeviceToken, hashToken } from "../utils/deviceToken.js"
 import capitalize from "../utils/capitalize.js"
 import { createLog } from "./logService.js"
+import { emitRevoke } from "../utils/sseManager.js"
 
 export const getElection = async (role) => {
     const res = await pool.query(
@@ -905,11 +906,11 @@ export const getActivatedVotingSystems = async (id) => {
 
 export const revokeActivatedVotingSystem = async (
     electionId,
-    deviceId,
+    devicePk,
     user
 ) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
-    if (!deviceId) throw new CustomError("Device id is required", 400)
+    if (!devicePk) throw new CustomError("Device id is required", 400)
 
     const client = await pool.connect()
 
@@ -931,20 +932,22 @@ export const revokeActivatedVotingSystem = async (
             )
 
         const deviceRes = await client.query(
-            "SELECT device_name, revoked_at FROM voting_devices WHERE id = $1 FOR UPDATE",
-            [deviceId]
+            "SELECT device_name, device_id, revoked_at FROM voting_devices WHERE id = $1 FOR UPDATE",
+            [devicePk]
         )
 
         if (deviceRes.rowCount === 0)
-            throw new CustomError("System not found", 404)
+            throw new CustomError("Voting device not found", 404)
 
         if (deviceRes.rows[0].revoked_at)
-            throw new CustomError("System already revoked", 409)
+            throw new CustomError("Voting device already revoked", 409)
 
         await client.query(
             "UPDATE voting_devices SET revoked_at = NOW() WHERE id = $1",
-            [deviceId]
+            [devicePk]
         )
+
+        emitRevoke(deviceRes.rows[0].device_id)
 
         await createLog(
             electionId,

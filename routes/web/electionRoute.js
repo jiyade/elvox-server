@@ -14,7 +14,8 @@ import {
     generateSecretKey,
     getActivatedVotingSystems,
     revokeActivatedVotingSystem,
-    streamEvents
+    streamLogEvents,
+    streamOtpEvents
 } from "../../controllers/electionController.js"
 import { getLogs } from "../../controllers/logController.js"
 import { publishResults } from "../../controllers/resultController.js"
@@ -75,11 +76,13 @@ router.patch(
     revokeActivatedVotingSystem
 )
 
+router.get("/:id/sse/logs", requireRole(["admin"]), streamLogEvents)
+
 router.get(
-    "/:id/events/stream",
+    "/:id/sse/otp",
     resolveEffectiveRole,
-    requireRole(["admin", "supervisor"]),
-    streamEvents
+    requireRole(["supervisor"]),
+    streamOtpEvents
 )
 
 router.get(

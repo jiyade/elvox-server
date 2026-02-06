@@ -1,6 +1,13 @@
 import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
-import { addClient, removeClient } from "../utils/sseManager.js"
+import {
+    addLogClient,
+    removeLogClient,
+    addOtpClient,
+    removeOtpClient,
+    revokeConnections
+} from "../utils/sseManager.js"
+import { initSSE } from "../utils/initSSE.js"
 import * as electionService from "../services/electionService.js"
 
 export const getElection = async (req, res, next) => {
@@ -183,7 +190,7 @@ export const revokeActivatedVotingSystem = async (req, res, next) => {
     }
 }
 
-export const streamEvents = async (req, res, next) => {
+export const streamLogEvents = async (req, res, next) => {
     const electionId = req.params.id
 
     try {
@@ -198,14 +205,59 @@ export const streamEvents = async (req, res, next) => {
         return next(err)
     }
 
-    res.setHeader("Content-Type", "text/event-stream")
-    res.setHeader("Cache-Control", "no-cache")
-    res.setHeader("Connection", "keep-alive")
-    res.flushHeaders()
-
-    addClient(electionId, res)
-
-    req.on("close", () => {
-        removeClient(electionId, res)
+    initSSE(res, () => {
+        removeLogClient(electionId, res)
     })
+
+    addLogClient(electionId, res)
+}
+
+export const streamOtpEvents = async (req, res, next) => {
+    const electionId = req.params.id
+
+    try {
+        const { rowCount } = await pool.query(
+            "SELECT 1 FROM elections WHERE id = $1 LIMIT 1",
+            [electionId]
+        )
+        if (!rowCount)
+            throw new CustomError("No election found with the given id", 404)
+    } catch (err) {
+        return next(err)
+    }
+
+    initSSE(res, () => {
+        removeOtpClient(electionId, res)
+    })
+
+    addOtpClient(electionId, res)
+}
+
+export const streamRevokeEvents = async (req, res, next) => {
+    const electionId = req.params.id
+    const { deviceId } = req?.device
+
+    try {
+        const electionRes = await pool.query(
+            "SELECT 1 FROM elections WHERE id = $1 LIMIT 1",
+            [electionId]
+        )
+        if (!electionRes.rowCount)
+            throw new CustomError("No election found with the given id", 404)
+
+        const deviceRes = await pool.query(
+            "SELECT 1 FROM voting_devices WHERE device_id = $1 AND election_id = $2 LIMIT 1",
+            [deviceId, electionId]
+        )
+        if (!deviceRes.rowCount)
+            throw new CustomError("No device found with the given id", 404)
+    } catch (err) {
+        return next(err)
+    }
+
+    initSSE(res, () => {
+        revokeConnections.delete(deviceId)
+    })
+
+    revokeConnections.set(deviceId, res)
 }
