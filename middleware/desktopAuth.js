@@ -22,7 +22,7 @@ const authMiddleware = async (req, res, next) => {
             `
             SELECT vd.device_id, vd.device_name, vd.election_id, vd.revoked_at
             FROM voting_devices vd
-            JOIN elections e ON e.election_id = vd.election_id
+            JOIN elections e ON e.id = vd.election_id
             WHERE vd.auth_token_hash = $1
             AND e.status != 'closed';
             `,
