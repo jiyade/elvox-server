@@ -6,10 +6,13 @@ const authMiddleware = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization
 
-        if (!authHeader?.startsWith("Bearer "))
-            throw new CustomError("Authentication required", 401)
+        const headerToken = authHeader?.startsWith("Bearer ")
+            ? authHeader.split(" ")[1]
+            : null
 
-        const token = authHeader.split(" ")[1]
+        const queryToken = req.query.token
+
+        const token = headerToken || queryToken
 
         if (!token) throw new CustomError("Authentication required", 401)
 
