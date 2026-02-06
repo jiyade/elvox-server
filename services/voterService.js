@@ -64,7 +64,9 @@ export const verifyVoter = async (user, data) => {
 
         const otpHash = crypto.createHash("sha256").update(otp).digest("hex")
 
-        const expiresAt = new Date(Date.now() + 60 * 1000)
+        const OTP_DURATION_MS = 60 * 1000
+
+        const expiresAt = new Date(Date.now() + OTP_DURATION_MS)
 
         const otpRes = await client.query(
             "INSERT INTO otp_verifications (admno, election_id, otp_hash, expires_at) VALUES ($1, $2, $3, $4) RETURNING created_at",
@@ -89,7 +91,7 @@ export const verifyVoter = async (user, data) => {
             electionId,
             otp,
             expiresAt,
-            issuedAt: otpRes.rows[0].created_at
+            expiresInMs: OTP_DURATION_MS
         }
     } catch (err) {
         await client.query("ROLLBACK")
