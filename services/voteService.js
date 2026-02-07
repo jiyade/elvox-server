@@ -314,7 +314,7 @@ export const countVotes = async (electionId, client = null) => {
         const tutorIds = tiedClassTutorRes.rows.map((r) => r.user_id)
 
         await sendNotification(tutorIds, {
-            message: `A tie has been detected in your class election. Please conduct a tie-breaker and submit the tie-breaker results`,
+            message: `Tie detected in your class. Please conduct a tie-breaker and submit the results`,
             type: "info",
             title: "Tie detected!"
         })
