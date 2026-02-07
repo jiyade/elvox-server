@@ -134,6 +134,8 @@ export const publishResults = async (electionId, user) => {
 
     const client = await pool.connect()
 
+    let committed = false
+
     try {
         await client.query("BEGIN")
 
@@ -198,10 +200,35 @@ export const publishResults = async (electionId, user) => {
         )
 
         await client.query("COMMIT")
+        committed = true
+
+        const tiedClassRes = await pool.query(
+            "SELECT DISTINCT class_id FROM results WHERE election_id = $1 AND result_status = 'tie'",
+            [electionId]
+        )
+
+        if (tiedClassRes.rowCount > 0) {
+            const classIds = tiedClassRes.rows.map((r) => r.class_id)
+
+            const tiedClassTutorRes = await pool.query(
+                "SELECT user_id FROM teachers WHERE tutor_of = ANY($1)",
+                [classIds]
+            )
+
+            if (tiedClassTutorRes.rowCount > 0) {
+                const tutorIds = tiedClassTutorRes.rows.map((r) => r.user_id)
+
+                await sendNotification(tutorIds, {
+                    message: `A tie has been detected in your class election. Please conduct a tie-breaker and submit the tie-breaker results`,
+                    type: "info",
+                    title: "Tie detected!"
+                })
+            }
+        }
 
         return { ok: true, message: "Results published successfully" }
     } catch (err) {
-        await client.query("ROLLBACK")
+        if (!committed) await client.query("ROLLBACK")
 
         throw err
     } finally {

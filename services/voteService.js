@@ -294,5 +294,29 @@ export const countVotes = async (electionId, client = null) => {
             },
             client
         )
+
+        const tiedClassRes = await client.query(
+            "SELECT DISTINCT class_id FROM results WHERE election_id = $1 AND result_status = 'tie'",
+            [electionId]
+        )
+
+        if (tiedClassRes.rowCount === 0) return
+
+        const classIds = tiedClassRes.rows.map((r) => r.class_id)
+
+        const tiedClassTutorRes = await client.query(
+            "SELECT user_id FROM teachers WHERE tutor_of = ANY($1)",
+            [classIds]
+        )
+
+        if (tiedClassTutorRes.rowCount === 0) return
+
+        const tutorIds = tiedClassTutorRes.rows.map((r) => r.user_id)
+
+        await sendNotification(tutorIds, {
+            message: `A tie has been detected in your class election. Please conduct a tie-breaker and submit the tie-breaker results`,
+            type: "info",
+            title: "Tie detected!"
+        })
     }
 }
