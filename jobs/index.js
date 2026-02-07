@@ -1,4 +1,5 @@
 import pool from "../db/db.js"
+import { createLog } from "../services/logService.js"
 import { advanceElectionStatus } from "./advanceElectionStatus.js"
 import { sendDeadlineNotifications } from "./sendDeadlineNotifications.js"
 
@@ -10,6 +11,7 @@ const runCron = async () => {
     running = true
 
     let client
+    let electionId = null
 
     try {
         client = await pool.connect()
@@ -25,7 +27,7 @@ const runCron = async () => {
             return
         }
 
-        const electionId = res.rows[0].id
+        electionId = res.rows[0].id
 
         await advanceElectionStatus(client, electionId)
 
@@ -37,6 +39,11 @@ const runCron = async () => {
             if (client) await client.query("ROLLBACK")
         } catch {}
         console.error("Cron failed:", err.message)
+
+        await createLog(electionId, {
+            level: "error",
+            message: `System cron failed: ${err.message}`
+        })
     } finally {
         if (client) client.release()
         running = false
