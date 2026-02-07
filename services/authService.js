@@ -92,6 +92,10 @@ export const getOtp = async (data) => {
                 throw new CustomError("Failed to send OTP email", 500)
             }
         } else if (type === "phone") {
+            throw new CustomError(
+                "SMS-based OTP is currently unavailable. Please use email OTP",
+                403
+            )
         }
     }
 
