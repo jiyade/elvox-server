@@ -33,7 +33,9 @@ export const getClassTieBreakerStatus = async (electionId, classId) => {
             ) AS candidates
             FROM results r
             LEFT JOIN candidates c ON c.id = r.candidate_id
-            WHERE r.election_id = $1
+            JOIN elections e ON e.id = $1
+            WHERE e.result_published = true
+            AND r.election_id = $1
             AND r.class_id = $2
             AND r.result_status = 'tie'
             GROUP BY r.category;
