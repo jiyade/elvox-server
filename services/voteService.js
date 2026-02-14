@@ -3,25 +3,70 @@ import CustomError from "../utils/CustomError.js"
 import pool from "../db/db.js"
 import { sendNotification } from "./notificationService.js"
 import { createLog } from "./logService.js"
-import { getElectionDetails } from "./electionService.js"
 
 export const castVote = async (electionId, data) => {
     const { votingToken, votes } = data
 
     if (!electionId) throw new CustomError("Election ID is required", 400)
     if (!votingToken) throw new CustomError("Voting token is required", 400)
-    if (!votes || !votes.general || !votes.reserved)
-        throw new CustomError(
-            "Please cast both required votes before submitting",
-            400
-        )
+
+    const electionCateogryRes = await pool.query(
+        "SELECT category_config FROM elections WHERE id = $1",
+        [electionId]
+    )
+
+    if (electionCateogryRes.rowCount !== 1) {
+        throw new CustomError("Election not found", 404)
+    }
+
+    if (!votes || typeof votes !== "object" || votes.general == null)
+        throw new CustomError("General vote is required", 400)
+
+    const classIdRes = await pool.query(
+        "SELECT class_id FROM ballot_entries WHERE id = $1 AND election_id = $2",
+        [votes.general, electionId]
+    )
+
+    if (classIdRes.rowCount === 0)
+        throw new CustomError("Ballot not found", 404)
+
+    const reservedClasses =
+        electionCateogryRes.rows[0].category_config.map(Number)
+
+    const hasReserved = reservedClasses.includes(
+        Number(classIdRes.rows[0].class_id)
+    )
+
+    const allowedKeys = hasReserved ? ["general", "reserved"] : ["general"]
+    for (const key of Object.keys(votes)) {
+        if (!allowedKeys.includes(key))
+            throw new CustomError("Invalid vote payload", 400)
+    }
+
+    if (hasReserved) {
+        if (votes.reserved == null)
+            throw new CustomError(
+                "Reserved vote is required for this class",
+                400
+            )
+    } else {
+        if ("reserved" in votes)
+            throw new CustomError(
+                "Reserved vote is not applicable for this class",
+                400
+            )
+    }
 
     let payload
 
     try {
         payload = jwt.verify(votingToken, process.env.VOTING_TOKEN_SECRET)
     } catch (err) {
-        throw new CustomError("Invalid or expired voting token", 401)
+        throw new CustomError(
+            "Invalid or expired voting token",
+            401,
+            "TOKEN_EXPIRED"
+        )
     }
 
     if (
@@ -36,15 +81,21 @@ export const castVote = async (electionId, data) => {
     if (payload.electionId !== electionId)
         throw new CustomError("Invalid election context", 403)
 
-    const election = await getElectionDetails(electionId)
-
-    if (election.status !== "voting")
-        throw new CustomError("Voting is not allowed at this time", 403)
-
     const client = await pool.connect()
 
     try {
         await client.query("BEGIN")
+
+        const electionRes = await client.query(
+            "SELECT status, name FROM elections WHERE id = $1 FOR UPDATE",
+            [electionId]
+        )
+
+        if (electionRes.rowCount === 0)
+            throw new CustomError("Election not found", 404)
+
+        if (electionRes.rows[0].status !== "voting")
+            throw new CustomError("Voting is not allowed at this time", 403)
 
         const hasVotedRes = await client.query(
             "SELECT has_voted FROM voters WHERE admno = $1 AND election_id = $2 FOR UPDATE",
@@ -57,14 +108,19 @@ export const castVote = async (electionId, data) => {
         if (hasVotedRes.rows[0].has_voted)
             throw new CustomError("You have already voted", 409)
 
+        const ballotIds = hasReserved
+            ? [votes.general, votes.reserved]
+            : [votes.general]
+
         const hasBallotEntryRes = await client.query(
             "SELECT COUNT(*) FROM ballot_entries WHERE id = ANY($1::uuid[]) AND election_id = $2",
-            [[votes.general, votes.reserved], electionId]
+            [ballotIds, electionId]
         )
 
-        const count = Number(hasBallotEntryRes.rows[0].count)
+        const expectedCount = ballotIds.length
 
-        if (count !== 2) throw new CustomError("Invalid ballot entry", 400)
+        if (Number(hasBallotEntryRes.rows[0].count) !== expectedCount)
+            throw new CustomError("Invalid ballot entry", 400)
 
         const insertRes = await client.query(
             `
@@ -84,12 +140,13 @@ export const castVote = async (electionId, data) => {
                 be.class_id,
                 $2 AS device_id
             FROM ballot_entries be
-            WHERE be.id = ANY($3::uuid[]);
+            WHERE be.id = ANY($3::uuid[])
+                AND be.election_id = $1
             `,
-            [electionId, payload.deviceId, [votes.general, votes.reserved]]
+            [electionId, payload.deviceId, ballotIds]
         )
 
-        if (insertRes.rowCount !== 2)
+        if (insertRes.rowCount !== expectedCount)
             throw new CustomError("Invalid ballot entry", 400)
 
         await client.query(
@@ -118,7 +175,7 @@ export const castVote = async (electionId, data) => {
             electionId,
             {
                 level: "info",
-                message: `A vote has been recorded for "${election.name}"`
+                message: `A vote has been recorded for "${electionRes.rows[0].name}"`
             },
             client
         )
@@ -184,6 +241,17 @@ export const countVotes = async (electionId, client = null) => {
             ON v.ballot_entry_id = b.id
             AND v.election_id = $1
         WHERE b.election_id = $1
+            AND (
+                b.category = 'general'
+                OR (
+                    b.category = 'reserved'
+                    AND b.class_id = ANY(
+                        SELECT jsonb_array_elements_text(category_config)::int
+                        FROM elections
+                        WHERE id = $1
+                    )
+                )
+            )
         GROUP BY
             b.election_id,
             b.class_id,

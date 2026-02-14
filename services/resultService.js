@@ -40,12 +40,15 @@ export const getReults = async (electionId, queries) => {
                     general: {
                         totalVotes: 0,
                         candidates: []
-                    },
-                    reserved: {
-                        totalVotes: 0,
-                        candidates: []
                     }
                 }
+            }
+        }
+
+        if (!grouped[key].results[r.category]) {
+            grouped[key].results[r.category] = {
+                totalVotes: 0,
+                candidates: []
             }
         }
 
@@ -65,7 +68,7 @@ export const getReults = async (electionId, queries) => {
 
     // SORT CANDIDATES AND COMPUTE LEAD
     Object.values(grouped).forEach((group) => {
-        ;["general", "reserved"].forEach((category) => {
+        Object.keys(group.results).forEach((category) => {
             const arr = group.results[category].candidates
 
             if (!arr.length) return
@@ -115,8 +118,19 @@ export const getRandomCandidatesResults = async (limit) => {
         FROM results r
         JOIN candidates c ON c.id = r.candidate_id
         WHERE r.election_id = $1
-          AND r.result_status != 'tie'
-          AND r.is_nota = FALSE
+            AND r.result_status != 'tie'
+            AND r.is_nota = FALSE
+            AND (
+                r.category = 'general'
+                OR (
+                    r.category = 'reserved'
+                    AND r.class_id = ANY(
+                        SELECT jsonb_array_elements_text(category_config)::int
+                        FROM elections
+                        WHERE id = $1
+                    )
+                )
+            )
         ORDER BY RANDOM()
         LIMIT $2
     `

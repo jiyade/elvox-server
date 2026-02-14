@@ -23,6 +23,17 @@ const buildGetResultsQuery = (electionId, queries, forExport = false) => {
         JOIN classes cl ON cl.id = r.class_id
         JOIN elections e ON e.id = r.election_id
         WHERE r.election_id = $1
+            AND (
+                r.category = 'general'
+                OR (
+                    r.category = 'reserved'
+                    AND r.class_id = ANY(
+                        SELECT jsonb_array_elements_text(category_config)::int
+                        FROM elections
+                        WHERE id = $1
+                    )
+                )
+            )
             AND e.result_published = TRUE
     `
 

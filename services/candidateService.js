@@ -353,6 +353,15 @@ export const getBallotEntries = async (classId, electionId) => {
     if (!classId) throw new CustomError("Class ID is required", 400)
     if (!electionId) throw new CustomError("Election ID is required", 400)
 
+    const electionCateogryRes = await pool.query(
+        "SELECT category_config FROM elections WHERE id = $1",
+        [electionId]
+    )
+
+    if (electionCateogryRes.rowCount !== 1) {
+        throw new CustomError("Election not found", 404)
+    }
+
     const res = await pool.query(
         `SELECT
             be.id AS ballot_entry_id,
@@ -373,7 +382,15 @@ export const getBallotEntries = async (classId, electionId) => {
         [electionId, classId]
     )
 
-    const candidates = { general: [], reserved: [] }
+    const reservedClasses =
+        electionCateogryRes.rows[0].category_config.map(Number)
+
+    const isReservedClass = reservedClasses.includes(Number(classId))
+
+    const candidates = {
+        general: [],
+        ...(isReservedClass ? { reserved: [] } : {})
+    }
 
     if (res.rowCount === 0) return candidates
 
