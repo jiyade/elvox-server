@@ -95,10 +95,16 @@ export const advanceElectionStatus = async (client, electionId) => {
                 cat.category,
                 true
             FROM classes c
-            CROSS JOIN (
-                SELECT unnest(ARRAY['general', 'reserved']) AS category
+            JOIN elections e ON e.id = $1
+            CROSS JOIN LATERAL (
+                SELECT 'general' AS category
+                UNION ALL
+                SELECT 'reserved'
+                WHERE c.id = ANY (
+                    SELECT jsonb_array_elements_text(e.category_config)::int
+                )
             ) cat
-            ON CONFLICT DO NOTHING
+            ON CONFLICT DO NOTHING;
             `,
             [electionId]
         )
